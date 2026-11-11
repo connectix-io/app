@@ -1,0 +1,25 @@
+name: Node and dependencies
+description: >-
+  The pinned node (.nvmrc) and node_modules. node_modules is cached on the
+  lockfile, so a run whose lockfile did not change skips `npm ci` entirely;
+  a miss falls back to `npm ci` from setup-node's npm download cache.
+  (Same shape as ../app's action.)
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+
+    - name: Restore node_modules
+      id: modules
+      uses: actions/cache@v6
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+
+    - name: Install locked dependencies
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci

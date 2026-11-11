@@ -1,0 +1,4 @@
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
+--pull=false
+--secret-file .secrets
+--var-file .vars

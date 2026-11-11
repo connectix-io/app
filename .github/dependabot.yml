@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      mui:
+        patterns: ["@mui/*", "@emotion/*"]
+      react:
+        patterns: ["react", "react-dom", "react-router*"]
+      testing:
+        patterns: ["@playwright/*", "playwright", "vitest", "@vitest/*", "@testing-library/*"]
+      dev-minor:
+        dependency-type: development
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: monthly

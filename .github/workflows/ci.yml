@@ -1,0 +1,195 @@
+# The gate. Every job here also runs locally with `make ci-local` (nektos/act),
+# so a red CI is reproducible on a laptop. Modeled on ../app's ci.yml.
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A new push cancels the run in flight for the old commit -- except on the
+  # default branch, where the run may be halfway through publishing the image.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
+
+jobs:
+  check:
+    name: lint, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/node-deps
+
+      - name: Lint
+        run: npm run lint
+
+      # VITE_* values are public and baked into the bundle; the build only needs
+      # them present to compile, real values come from repository variables.
+      - name: Production build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          VITE_APP_VERSION="$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}" npm run build
+          printf '{"build":"gh-%s","timestamp":"%s","commit":"%s"}\n' \
+            "${GITHUB_RUN_NUMBER:-local}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${GITHUB_SHA::8}" > dist/version.json
+
+      - name: Upload build output
+        # act has no artifact server by default; skip there.
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  unit:
+    name: unit tests (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-deps
+      - name: Unit tests
+        run: npm run test:run
+
+  deno:
+    name: API tests (deno)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      # Same Deno as the production image (Dockerfile.production).
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.3
+      - name: deno test
+        working-directory: api
+        run: deno test --allow-net --allow-env --allow-read tests/
+
+  e2e:
+    name: end-to-end (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Runs against the built bundle (vite preview), the same files production
+    # serves. The signed-in test runs only when E2E_EMAIL / E2E_PASSWORD secrets
+    # exist (never on forks or Dependabot, which get no secrets).
+    # The official Playwright image ships Chromium and its system libraries, so
+    # nothing is installed at run time and the job behaves the same on GitHub and
+    # under act (whose Ubuntu 26.04 runner Playwright 1.57 does not support).
+    # KEEP THE TAG IN STEP with @playwright/test in package-lock.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/node-deps
+
+      - name: Playwright matches the image
+        run: |
+          v=$(node -p "require('@playwright/test/package.json').version")
+          [ "$v" = "1.57.0" ] || { echo "::error::@playwright/test is $v; bump the container tag in ci.yml"; exit 1; }
+
+      - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Serve the build
+        run: |
+          nohup npx vite preview --host 127.0.0.1 --port 4200 --strictPort > /tmp/preview.log 2>&1 &
+          npx wait-on -t 60000 http-get://127.0.0.1:4200/login
+
+      - name: Run Playwright
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4200
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: npx playwright test tests/conversations-smoke.spec.ts --reporter=list
+
+      - name: Upload the report
+        if: ${{ failure() && !env.ACT }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Reports, does not block: the tree has known high findings that predate this
+    # pipeline. Flip to blocking once `npm audit --audit-level=high` is clean.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-deps
+      - name: npm audit (high and above)
+        run: npm audit --audit-level=high
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    needs: [check, unit, deno]
+    timeout-minutes: 30
+    # Builds on every pull request so a broken Dockerfile fails the PR. Only a
+    # push to the default branch publishes, to GHCR with GITHUB_TOKEN (nothing to
+    # rotate). Tagged releases go through release.yml.
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # Publish only on a push to the default branch, and never under act
+      # (act sets ACT=true; a local run must not push images).
+      - name: Decide whether to publish
+        env:
+          IS_DEFAULT_PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') }}
+        run: |
+          if [ "$IS_DEFAULT_PUSH" = "true" ] && [ -z "${ACT:-}" ]; then
+            echo "PUBLISH=true" >> "$GITHUB_ENV"
+          else
+            echo "PUBLISH=false" >> "$GITHUB_ENV"; echo "build only"
+          fi
+
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image name (lowercase)
+        id: img
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.production
+          push: ${{ env.PUBLISH == 'true' }}
+          build-args: |
+            VITE_APP_VERSION=gh-${{ github.run_number }}
+            VITE_SUPABASE_URL=${{ vars.VITE_SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ vars.VITE_SUPABASE_ANON_KEY }}
+          tags: |
+            ${{ steps.img.outputs.name }}:sha-${{ github.sha }}
+            ${{ steps.img.outputs.name }}:edge
+          cache-from: ${{ env.PUBLISH == 'true' && 'type=gha' || '' }}
+          cache-to: ${{ env.PUBLISH == 'true' && 'type=gha,mode=max' || '' }}

@@ -1,0 +1,5 @@
+# Repository variables for `act` (copy to .vars, gitignored). On GitHub these
+# live under Settings → Secrets and variables → Actions → Variables.
+# Public by design: they are baked into the browser bundle.
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
