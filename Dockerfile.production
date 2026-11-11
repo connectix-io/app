@@ -33,7 +33,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Deno runtime serving React + API
-FROM denoland/deno:2.5.3
+FROM denoland/deno:2.9.8
 WORKDIR /app
 
 COPY api/deno.json api/deno.lock ./
