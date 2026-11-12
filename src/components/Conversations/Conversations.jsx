@@ -1,111 +1,171 @@
 import { useState } from 'react';
 import {
-  Box, Paper, Table, TableHead, TableRow, TableCell, TableBody, TextField, ToggleButton,
-  ToggleButtonGroup, Button, Chip, Typography, Alert, CircularProgress, Drawer,
+  Box, List, ListItemButton, Avatar, Chip, IconButton, Typography, Alert,
+  CircularProgress, Tooltip, useMediaQuery,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
+import { STATUS_ICON } from './conversationFormat';
 import { useTranslation } from 'react-i18next';
 import { useDirection } from '../../context/DirectionContext';
+import InboxRail from './InboxRail';
+import GlobalSearch from './GlobalSearch';
+import PhoneWidget from '../Phone/PhoneWidget';
+import ErrorBoundary from '../common/ErrorBoundary';
 import { useConversations } from './useConversations';
 import { STATUSES } from './conversationCommands';
 import ConversationThread from './ConversationThread';
+import CustomerPanel from './CustomerPanel';
 import NewConversationDialog from './NewConversationDialog';
-import { channelIcon, statusColor, formatWhen } from './conversationFormat';
+import { channelIcon, formatWhen } from './conversationFormat';
 
-// The main screen: one table of conversations (the read model), a thread panel
-// for the selected row, and a dialog to start a new conversation.
+const LIST_KEY = 'inbox-list-open';
+const readListOpen = () => { try { return localStorage.getItem(LIST_KEY) !== '0'; } catch { return true; } };
+const STATUS_DOT = { open: 'primary.main', pending: 'warning.main', resolved: 'success.main' };
+const LIST_WIDTH = 400;
+
+// The inbox, WhatsApp Web style: the left sidebar, the main search on top, then
+// the conversation list, the chat and the docked phone (customer info is a phone
+// tab). On a phone the list and the chat take turns.
 export default function Conversations() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { direction } = useDirection();
+  const theme = useTheme();
+  const narrow = useMediaQuery(theme.breakpoints.down('md'));
   const c = useConversations();
   const [creating, setCreating] = useState(false);
+  const [listOpen, setListOpenState] = useState(readListOpen);
+
+  const setListOpen = (value) => {
+    try { localStorage.setItem(LIST_KEY, value ? '1' : '0'); } catch { /* private mode */ }
+    setListOpenState(value);
+  };
+  const showList = narrow ? (listOpen || !c.selected) : listOpen;
+  const showThread = !narrow || !showList;
+  const open = (id) => { c.setSelectedId(id); if (narrow) setListOpen(false); };
+  // The phone docks as the right-most column (on phones it stays an overlay);
+  // the open conversation's customer is a tab inside it.
+  const customer = c.selected
+    ? <Box dir={direction}><CustomerPanel embedded conversation={c.selected} events={c.thread} /></Box>
+    : null;
+  const phone = (
+    <ErrorBoundary label="phone-widget" fallback={null}>
+      <PhoneWidget dock={narrow ? null : 'phone-dock'} customer={customer} />
+    </ErrorBoundary>
+  );
 
   return (
-    <Box dir={direction} sx={{ p: 2 }} data-testid="conversations-page">
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
-        <Typography variant="h5" sx={{ flexGrow: 1 }}>{t('conversations.title')}</Typography>
-        <TextField
-          size="small"
-          placeholder={t('conversations.search')}
-          value={c.search}
-          onChange={(e) => c.setSearch(e.target.value)}
-          data-testid="conversations-search"
-        />
-        <ToggleButtonGroup size="small" exclusive value={c.status} onChange={(_, v) => v && c.setStatus(v)}>
-          {['all', ...STATUSES].map((s) => (
-            <ToggleButton key={s} value={s}>{t(`conversations.status.${s}`)}</ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreating(true)} data-testid="conversations-new">
-          {t('conversations.new')}
-        </Button>
+    <Box dir={direction} data-testid="conversations-page" sx={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <InboxRail listOpen={showList} onToggleList={() => setListOpen(!showList)} />
+
+      {/* Everything right of the rail: the main search on top, then list | chat | phone. */}
+      <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: 68, flexShrink: 0, px: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: 1, borderColor: 'divider' }}>
+          <GlobalSearch onOpen={open} onSearchAll={c.setSearch} onStatus={c.setStatus} />
+        </Box>
+        <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex' }}>
+
+      {/* Conversation list — slides open / closed. */}
+      {(showList || !narrow) && (
+        <Box sx={{
+          width: narrow ? '100%' : (showList ? LIST_WIDTH : 0), flexShrink: 0, overflow: 'hidden',
+          transition: 'width 240ms ease', display: 'flex', flexDirection: 'column',
+          borderInlineEnd: showList && !narrow ? 1 : 0, borderColor: 'divider', bgcolor: 'background.paper',
+        }}>
+          <Box sx={{ minWidth: narrow ? 0 : LIST_WIDTH, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Box sx={{ height: 72, flexShrink: 0, px: 2.5, display: 'flex', alignItems: 'center' }}>
+              <Typography sx={{ flexGrow: 1, fontSize: 24, fontWeight: 700 }}>{t('conversations.title')}</Typography>
+              <Tooltip title={t('conversations.new')}>
+                <IconButton onClick={() => setCreating(true)} data-testid="conversations-new" aria-label={t('conversations.new')}
+                  sx={{ borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }}>
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 0.75, px: 2, pb: 1.5, flexWrap: 'nowrap', overflowX: 'auto' }}>
+              {['all', ...STATUSES].map((s) => (
+                <Chip key={s} icon={STATUS_ICON[s]} label={t(`conversations.status.${s}`)} onClick={() => c.setStatus(s)}
+                  data-testid={`filter-${s}`}
+                  sx={{
+                    fontSize: 14, height: 32, flexShrink: 0, borderRadius: 1.5,
+                    ...(c.status === s
+                      ? { bgcolor: 'primary.main', color: 'primary.contrastText', '& .MuiChip-icon': { color: 'inherit' }, '&:hover': { bgcolor: 'primary.dark' } }
+                      : { bgcolor: 'action.hover' }),
+                  }} />
+              ))}
+            </Box>
+
+            {c.error === 'setup' && (
+              <Alert severity="info" sx={{ m: 2 }} data-testid="conversations-setup">{t('conversations.setupNeeded')}</Alert>
+            )}
+            {c.error && c.error !== 'setup' && <Alert severity="error" sx={{ m: 2 }}>{c.error}</Alert>}
+
+            <List disablePadding sx={{ flexGrow: 1, overflowY: 'auto', px: 1 }} data-testid="conversations-list">
+              {c.loading && <Box sx={{ p: 3, textAlign: 'center' }}><CircularProgress size={24} /></Box>}
+              {!c.loading && !c.error && c.rows.length === 0 && (
+                <Typography sx={{ p: 3 }} align="center" color="text.secondary">{t('conversations.empty')}</Typography>
+              )}
+              {c.rows.map((row) => (
+                <ConversationItem key={row.id} row={row} selected={row.id === c.selectedId} onClick={() => open(row.id)} />
+              ))}
+            </List>
+          </Box>
+        </Box>
+      )}
+
+      {showThread && (
+        <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {c.selected ? (
+            <ConversationThread conversation={c.selected} events={c.thread} actions={phone}
+              onBack={narrow ? () => setListOpen(true) : null} />
+          ) : (
+            <Box sx={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 1, color: 'text.secondary', bgcolor: 'background.default' }}>
+              <Box sx={{ position: 'absolute', top: 16, insetInlineEnd: 16 }}>{phone}</Box>
+              <ForumOutlinedIcon sx={{ fontSize: 56 }} />
+              <Typography sx={{ fontSize: 18 }}>{t('conversations.pick')}</Typography>
+            </Box>
+          )}
+        </Box>
+      )}
+
+      <Box id="phone-dock" sx={{ display: 'flex', flexShrink: 0, height: '100%', bgcolor: 'background.default' }} />
+        </Box>
       </Box>
-
-      {c.error && <Alert severity="error" sx={{ mb: 2 }}>{c.error}</Alert>}
-
-      <Paper variant="outlined" sx={{ overflowX: 'auto' }}>
-        <Table size="small" data-testid="conversations-table">
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('conversations.col.contact')}</TableCell>
-              <TableCell>{t('conversations.col.channel')}</TableCell>
-              <TableCell>{t('conversations.col.last')}</TableCell>
-              <TableCell>{t('conversations.col.status')}</TableCell>
-              <TableCell>{t('conversations.col.assignee')}</TableCell>
-              <TableCell>{t('conversations.col.updated')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {c.loading && (
-              <TableRow><TableCell colSpan={6} align="center"><CircularProgress size={24} /></TableCell></TableRow>
-            )}
-            {!c.loading && c.rows.length === 0 && (
-              <TableRow><TableCell colSpan={6} align="center">{t('conversations.empty')}</TableCell></TableRow>
-            )}
-            {c.rows.map((row) => (
-              <TableRow
-                key={row.id}
-                hover
-                selected={row.id === c.selectedId}
-                onClick={() => c.setSelectedId(row.id)}
-                sx={{ cursor: 'pointer' }}
-                data-testid="conversation-row"
-              >
-                <TableCell>
-                  <Typography variant="body2" fontWeight={600}>{row.contact_name}</Typography>
-                  <Typography variant="caption" color="text.secondary" dir="ltr">{row.contact_phone}</Typography>
-                </TableCell>
-                <TableCell>{channelIcon(row.channel)} {t(`conversations.channel.${row.channel}`, row.channel)}</TableCell>
-                <TableCell sx={{ maxWidth: 320, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {row.last_text || '—'}
-                </TableCell>
-                <TableCell>
-                  <Chip size="small" color={statusColor(row.status)} label={t(`conversations.status.${row.status}`)} />
-                </TableCell>
-                <TableCell>{row.assignee || t('conversations.unassigned')}</TableCell>
-                <TableCell>{formatWhen(row.updated_at, i18n.language)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
-
-      <Drawer
-        anchor={direction === 'rtl' ? 'left' : 'right'}
-        open={Boolean(c.selected)}
-        onClose={() => c.setSelectedId(null)}
-        PaperProps={{ sx: { width: { xs: '100%', sm: 480 } } }}
-      >
-        {c.selected && (
-          <ConversationThread conversation={c.selected} events={c.thread} onClose={() => c.setSelectedId(null)} />
-        )}
-      </Drawer>
 
       <NewConversationDialog
         open={creating}
         onClose={() => setCreating(false)}
-        onCreated={(id) => { setCreating(false); c.setSelectedId(id); c.refresh(); }}
+        onCreated={(id) => { setCreating(false); open(id); c.refresh(); }}
       />
     </Box>
+  );
+}
+
+function ConversationItem({ row, selected, onClick }) {
+  const { t, i18n } = useTranslation();
+  const name = row.contact_name || row.contact_phone || '?';
+  return (
+    <ListItemButton selected={selected} onClick={onClick} data-testid="conversation-row"
+      sx={{ gap: 1.5, py: 1.5, px: 1.5, borderRadius: 1.5, mb: 0.25, '&.Mui-selected': { bgcolor: 'action.selected' } }}>
+      <Avatar variant="rounded" sx={{ width: 48, height: 48, fontSize: 19, bgcolor: 'primary.main' }}>{name.trim().charAt(0).toUpperCase()}</Avatar>
+      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+          <Typography noWrap sx={{ flexGrow: 1, fontSize: 17, fontWeight: 500 }}>{name}</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+            {formatWhen(row.updated_at, i18n.language)}
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography color="text.secondary" noWrap sx={{ flexGrow: 1, fontSize: 15 }}>
+            {channelIcon(row.channel)} {row.last_text || t(`conversations.channel.${row.channel}`, row.channel)}
+          </Typography>
+          <Box title={t(`conversations.status.${row.status}`)}
+            sx={{ width: 10, height: 10, borderRadius: 0.5, flexShrink: 0, bgcolor: STATUS_DOT[row.status] || 'grey.400' }} />
+        </Box>
+      </Box>
+    </ListItemButton>
   );
 }

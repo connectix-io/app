@@ -11,12 +11,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import ForumIcon from '@mui/icons-material/Forum';
-import PhoneIcon from '@mui/icons-material/Phone';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import TranslateIcon from '@mui/icons-material/Translate';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -45,11 +40,6 @@ const MainMenu = ({ mobileDrawerOpen, onDrawerToggle }) => {
   // Define all menu items with their required permissions
   const allMenuItems = [
     { icon: <ForumIcon />, text: t('menu.conversations', 'Conversations'), path: '/conversations', permission: 'conversations:read' },
-    { icon: <DashboardIcon />, text: t('menu.dashboard'), path: '/dashboard', permission: 'dashboard:read' },
-    { icon: <PhoneIcon />, text: t('menu.calls'), path: '/calls', permission: 'calls:read' },
-    { icon: <BarChartIcon />, text: t('menu.reports'), path: '/reports', permission: 'reports:read' },
-    { icon: <NotificationsActiveIcon />, text: t('menu.notifications', 'Notifications'), path: '/notifications', permission: 'dashboard:read' },
-    { icon: <MonitorHeartIcon />, text: t('menu.status'), path: '/status', permission: 'dashboard:read' },
   ];
 
   // Filter menu items based on user permissions

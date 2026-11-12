@@ -10,14 +10,25 @@ import { APP_THEME } from '../../theme/appTheme';
 import SystemHealth from '../common/SystemHealth';
 import PhoneWidget from '../Phone/PhoneWidget';
 import ErrorBoundary from '../common/ErrorBoundary';
+import AccountMenu from './AccountMenu';
+import { brand } from '../../config';
 import './Layout.css';
+
+// The inbox owns the whole screen (WhatsApp Web style: its own icon rail, no top bar).
+const INBOX = '/conversations';
 
 const Layout = ({ children }) => {
   useLayout();
   const location = useLocation();
   const { t } = useTranslation();
   const isLoginPage = location.pathname === '/login';
+  const isFullScreen = location.pathname === INBOX;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const phone = (
+    <ErrorBoundary label="phone-widget" fallback={null}>
+      <PhoneWidget />
+    </ErrorBoundary>
+  );
 
   // Header shows the current screen's name (per route), not a static product title.
   const SCREEN_KEY = {
@@ -40,7 +51,8 @@ const Layout = ({ children }) => {
 
   return (
     <Box className="layout-container" data-testid="layout-container" sx={{direction:'inherit'}}>
-      <Box
+      {/* Hidden on full-screen pages: it sat on top of the inbox's send button. */}
+      {!isFullScreen && <Box
         component="footer"
         data-testid="app-version"
         sx={{
@@ -56,8 +68,12 @@ const Layout = ({ children }) => {
         }}
       >
         v{appVersion}
-      </Box>
-      {isLoginPage ? (
+      </Box>}
+      {isFullScreen ? (
+        <Box data-testid="main-content" sx={{ height: '100vh', overflow: 'hidden' }}>
+          {children}
+        </Box>
+      ) : isLoginPage ? (
         // Login page layout with LoginLeft component
         <Box sx={{ display: 'flex', width: '100%', height: '100vh' }} data-testid="login-layout">
           <Box className="login-left-container" sx={{ width: '40%', minWidth: '320px' }}>
@@ -115,12 +131,14 @@ const Layout = ({ children }) => {
                   <MenuIcon />
                 </IconButton>
 
+                <Box component="img" src={brand.logo} alt={brand.name} sx={{ height: 30, width: 'auto' }} />
                 <Typography
                   variant="h6"
                   component="h1"
                   sx={{
                     fontWeight: 600,
-                    fontSize: { xs: '1rem', sm: '1.25rem' }
+                    fontSize: { xs: '1rem', sm: '1.25rem' },
+                    display: isFullScreen ? { xs: 'none', md: 'block' } : 'block',
                   }}
                 >
                   {screenTitle}
@@ -138,9 +156,8 @@ const Layout = ({ children }) => {
                   the left drawer). Kept simple: health + the softphone. */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
                 <SystemHealth />
-                <ErrorBoundary label="phone-widget" fallback={null}>
-                  <PhoneWidget />
-                </ErrorBoundary>
+                {phone}
+                <AccountMenu />
               </Box>
             </Box>
           </Box>

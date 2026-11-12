@@ -102,6 +102,14 @@ export const theme = createTheme({
   },
 
   // RTL-specific component overrides + Enhanced Form UX
+  // Rubik everywhere (Hebrew + Latin), a little larger than MUI's default: simple and readable.
+  typography: {
+    fontFamily: "'Rubik', 'Noto Sans Hebrew', system-ui, -apple-system, 'Segoe UI', sans-serif",
+    fontSize: 15,
+    button: { textTransform: 'none', fontWeight: 500 },
+  },
+  shape: { borderRadius: 8 },   // squared, softly rounded
+
   components: {
     MuiButton: {
       styleOverrides: {

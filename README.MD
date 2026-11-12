@@ -20,10 +20,8 @@ npm install
 npm run dev              # → http://localhost:4200
 ```
 
-One-time database setup: open your Supabase project → **SQL Editor**, paste
-[`migrations/001_conversations_event_store.sql`](./migrations/001_conversations_event_store.sql)
-and run it. It creates the append-only `events` table and the `conversations` view.
-Create users under **Authentication → Users** (tick *Auto Confirm User*).
+One-time database setup: `make setup` — applies the event store, locks
+sign-ups, creates the first user and prints the env. See [SETUP.md](./SETUP.md).
 
 After login you land on **Conversations** — the main screen.
 

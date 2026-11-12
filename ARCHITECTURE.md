@@ -70,6 +70,7 @@ conversations, routing, rules — is built **here**.
 | `call.logged` | call_uuid, direction, duration_sec, summary |
 | `status.changed` | status: `open` / `pending` / `resolved` |
 | `conversation.assigned` | assignee (email; empty = unassigned) |
+| *(every event)* | `by` (who did it, email) — plus `actor_id`, stamped by the database |
 
 ## Where it is going (and what is interim)
 

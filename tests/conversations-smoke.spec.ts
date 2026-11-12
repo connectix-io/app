@@ -38,7 +38,7 @@ test.describe('conversations smoke', () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test('signed-in: create a conversation and see it in the table', async ({ page }) => {
+  test('signed-in: create a conversation and see it in the inbox', async ({ page }) => {
     test.skip(!E2E_EMAIL || !E2E_PASSWORD, 'E2E_EMAIL / E2E_PASSWORD not set');
 
     await page.goto('/login');
@@ -47,7 +47,7 @@ test.describe('conversations smoke', () => {
     await page.getByTestId('login-button').click();
 
     await expect(page).toHaveURL(/\/conversations$/, { timeout: 20_000 });
-    await expect(page.getByTestId('conversations-table')).toBeVisible();
+    await expect(page.getByTestId('conversations-list')).toBeVisible();
 
     // A unique customer per run (one customer = one thread, keyed by phone).
     const stamp = Date.now().toString().slice(-7);
@@ -62,7 +62,6 @@ test.describe('conversations smoke', () => {
     await page.getByTestId('thread-input').locator('textarea').first().fill('hello from e2e');
     await page.getByTestId('thread-send').click();
 
-    await page.keyboard.press('Escape');
     await expect(page.getByTestId('conversation-row').filter({ hasText: name })).toBeVisible({ timeout: 15_000 });
   });
 });

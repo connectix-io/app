@@ -13,10 +13,11 @@ export async function listConversations({ status = 'all', search = '', limit = 1
     .order('updated_at', { ascending: false })
     .limit(limit);
   if (status !== 'all') q = q.eq('status', status);
-  const term = search.trim();
+  // Characters that are filter syntax in PostgREST (or a LIKE wildcard) are dropped.
+  const term = search.replace(/[,()%*\\]/g, ' ').trim();
   if (term) q = q.or(`contact_name.ilike.%${term}%,contact_phone.ilike.%${term}%`);
   const { data, error } = await q;
-  if (error) throw new Error(error.message);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return data || [];
 }
 
@@ -27,7 +28,7 @@ export async function getThread(conversationId) {
     .select('id, type, data, actor_id, created_at')
     .eq('stream_id', conversationId)
     .order('id', { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return data || [];
 }
 
@@ -38,4 +39,32 @@ export function subscribeToEvents(onChange) {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, (payload) => onChange(payload.new))
     .subscribe();
   return () => { supabase.removeChannel(channel); };
+}
+
+/**
+ * The main search: customers by name / phone, and what was said (messages,
+ * notes, call summaries), each message with its customer. Small, for the
+ * search dropdown.
+ */
+export async function searchAll(search, limit = 5) {
+  const term = search.replace(/[,()%*\\]/g, ' ').trim();
+  if (!term) return { contacts: [], messages: [] };
+  const [contacts, hits] = await Promise.all([
+    listConversations({ search: term, limit }),
+    supabase
+      .from('events')
+      .select('id, stream_id, type, data, created_at')
+      .in('type', ['message.added', 'note.added', 'call.logged'])
+      .or(`data->>text.ilike.%${term}%,data->>summary.ilike.%${term}%`)
+      .order('id', { ascending: false })
+      .limit(limit),
+  ]);
+  if (hits.error) throw Object.assign(new Error(hits.error.message), { code: hits.error.code });
+  const ids = [...new Set((hits.data || []).map((e) => e.stream_id))];
+  const owners = ids.length
+    ? (await supabase.from('conversations').select('id, contact_name, contact_phone').in('id', ids)).data || []
+    : [];
+  const byId = Object.fromEntries(owners.map((o) => [o.id, o]));
+  const messages = (hits.data || []).map((e) => ({ ...e, contact: byId[e.stream_id] || null }));
+  return { contacts, messages };
 }

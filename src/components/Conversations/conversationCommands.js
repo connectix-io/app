@@ -11,8 +11,12 @@ import { customerKey, streamIdFor } from './customerKey';
 export const CHANNELS = Object.freeze(['phone', 'whatsapp', 'sms', 'email', 'chat']);
 export const STATUSES = Object.freeze(['open', 'pending', 'resolved']);
 
+// Every event says who did it (`by`, readable) next to `actor_id` (the user id the
+// database stamps). The thread is the event stream, so it reads as a full history.
 async function append(streamId, type, data) {
-  const { error } = await supabase.from('events').insert({ stream_id: streamId, type, data });
+  const { data: auth } = await supabase.auth.getSession();
+  const by = auth?.session?.user?.email || '';
+  const { error } = await supabase.from('events').insert({ stream_id: streamId, type, data: { ...data, by } });
   if (error) throw new Error(error.message);
 }
 

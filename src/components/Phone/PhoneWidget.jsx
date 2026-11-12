@@ -4,6 +4,7 @@
 // tabs (Calls · Dialpad · Settings), borderless keypad, and a big green call CTA.
 // A global incoming-call dialog rings on any page. Consumes SipPhoneProvider.
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Box, IconButton, Drawer, Tabs, Tab, TextField, Button, Typography, Stack,
   List, ListItemButton, ListItemText, Tooltip, Avatar,
@@ -22,6 +23,8 @@ import TerminalIcon from '@mui/icons-material/Terminal';
 import CloseIcon from '@mui/icons-material/Close';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import PersonIcon from '@mui/icons-material/PersonOutline';
+import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import { useSipPhoneCtx } from '../../context/SipPhoneContext';
 import { useDirection } from '../../context/DirectionContext';
@@ -34,11 +37,27 @@ const LOG_COLOR = { error: '#f87171', warn: '#fbbf24', debug: '#94a3b8', log: '#
 const LOG_KEY = 'sip-recent-dials';
 
 // Portal palette (matches the old WebRTC admin's right-hand phone dock).
-const PANEL = '#3b4350';      // panel body
-const PANEL_HEADER = '#2f3640'; // darker header strip
-const ACCENT = '#f5a623';     // active-tab orange
+const PANEL_DARK = '#3b4350';      // panel body
+const PANEL_HEADER_DARK = '#2f3640'; // darker header strip
+const ACCENT_DARK = '#f5a623';     // active-tab orange
 const GREEN = '#34c759';      // presence + call CTA
-const MUTED = '#9aa6b6';      // secondary text on dark
+const MUTED_DARK = '#9aa6b6';      // secondary text on dark
+
+const DOCK_KEY = 'sip-phone-docked';
+const readDocked = () => { try { return localStorage.getItem(DOCK_KEY) === '1'; } catch { return false; } };
+
+// Docked mode: the panel is a real column of the page (no overlay, no backdrop).
+// The page provides an element with the dock id; the panel portals into it.
+function DockShell({ open, children, PaperProps, dockTarget }) {
+  if (!open) return null;
+  return createPortal(
+    <Box dir="ltr" data-testid="phone-panel"
+      sx={{ ...PaperProps.sx, width: 340, flexShrink: 0, m: 1, height: 'calc(100% - 16px)', borderRadius: 3, overflow: 'hidden', zIndex: 'auto' }}>
+      {children}
+    </Box>,
+    dockTarget,
+  );
+}
 
 const loadDials = () => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch { return []; } };
 const pushDial = (n) => {
@@ -58,13 +77,32 @@ function useCallTimer(active) {
   return `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
 }
 
-export default function PhoneWidget() {
+export default function PhoneWidget({ dock = null, onDockOpenChange = null, customer = null }) {
   const { t } = useTranslation();
   const { isRTL } = useDirection();
+  // Light / dark follows the app theme; dark keeps the portal's slate dock.
+  const theme = useTheme();
+  const dark = theme.palette.mode === 'dark';
+  const PANEL = dark ? PANEL_DARK : theme.palette.background.paper;
+  const PANEL_HEADER = dark ? PANEL_HEADER_DARK : theme.palette.grey[100];
+  const ACCENT = dark ? ACCENT_DARK : theme.palette.primary.main;
+  const MUTED = dark ? MUTED_DARK : theme.palette.text.secondary;
+  const TEXT = dark ? '#e5e7eb' : theme.palette.text.primary;
+  const STRONG = dark ? '#fff' : theme.palette.text.primary;
+  const SOFT = dark ? '#cbd5e1' : theme.palette.text.secondary;
+  const KEYPAD = dark ? '#dfe5ec' : theme.palette.text.primary;
+  const AVATAR = dark ? '#5b6675' : theme.palette.grey[400];
+  const OVER = (a) => (dark ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`);
   const { status, connected, call, muted, dial, answer, hangup, sendDtmf, setMuted, settings, logs = [], clearLogs } = useSipPhoneCtx();
   // "Stick" the dock open (persistent, no backdrop) — survives reloads.
   const [pinned, setPinned] = useState(() => { try { return localStorage.getItem('sip-phone-pinned') === '1'; } catch { return false; } });
-  const [open, setOpen] = useState(pinned);
+  const [open, setOpen] = useState(() => (dock ? readDocked() : pinned));
+  const [dockEl, setDockEl] = useState(null);
+  useEffect(() => { setDockEl(dock ? document.getElementById(dock) : null); }, [dock]);
+  // Docked: remember open/closed, so it stays put across screens and reloads.
+  useEffect(() => { if (dock) { try { localStorage.setItem(DOCK_KEY, open ? '1' : '0'); } catch { /* ignore */ } } }, [dock, open]);
+  // Tell the page when the docked column takes room, so it can make space.
+  useEffect(() => { onDockOpenChange?.(Boolean(open && dockEl)); }, [open, dockEl, onDockOpenChange]);
   const [tab, setTab] = useState(1); // default to Dialpad, like the portal
   const [number, setNumber] = useState('');
   const [dials, setDials] = useState(loadDials);
@@ -109,10 +147,14 @@ export default function PhoneWidget() {
     try { await dial(n); } catch { /* status/UI reflects */ }
   };
 
+  const Shell = dockEl ? DockShell : Drawer;
+  // The Customer tab exists only while a conversation is open.
+  const shownTab = tab === 3 && !customer ? 1 : tab;
+
   return (
     <>
       <Tooltip title={connected ? t('phone.ready', 'Ready') : t('phone.offline', 'Offline')}>
-        <IconButton color="inherit" onClick={() => setOpen(true)} data-testid="phone-button">
+        <IconButton color="inherit" onClick={() => setOpen(dock ? (o) => !o : true)} data-testid="phone-button">
           <Box sx={{ position: 'relative' }}>
             <PhoneIcon />
             <Box sx={{ position: 'absolute', right: -2, bottom: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: DOT[status] || '#94a3b8', border: '1.5px solid #fff' }} />
@@ -120,7 +162,8 @@ export default function PhoneWidget() {
         </IconButton>
       </Tooltip>
 
-      <Drawer
+      <Shell
+        {...(dockEl ? { dockTarget: dockEl } : {})}
         // Pinned ("stuck") ⇒ persistent dock: stays open, no backdrop, the app
         // behind it stays usable. Unpinned ⇒ a normal temporary overlay.
         variant={pinned ? 'persistent' : 'temporary'}
@@ -131,12 +174,12 @@ export default function PhoneWidget() {
         onClose={() => { if (!pinned) setOpen(false); }}
         // A softphone is inherently LTR (keypad 1-2-3, tab order Calls·Dialpad·Settings)
         // — force LTR inside so it reads like the portal even in a RTL app.
-        PaperProps={{ dir: 'ltr', sx: { width: 340, maxWidth: '100vw', bgcolor: PANEL, color: '#e5e7eb', borderInline: 'none', display: 'flex', flexDirection: 'column', zIndex: 1300 } }}
+        PaperProps={{ dir: 'ltr', sx: { width: 340, maxWidth: '100vw', bgcolor: PANEL, color: TEXT, borderInline: 'none', display: 'flex', flexDirection: 'column', zIndex: 1300 } }}
         data-testid="phone-panel"
       >
         {/* Header — avatar, name • ext, presence, ready status, dock/close */}
         <Box sx={{ bgcolor: PANEL_HEADER, px: 1.5, py: 1.25, display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
-          <Avatar sx={{ width: 44, height: 44, bgcolor: '#5b6675', fontSize: '1.1rem' }}>{initial}</Avatar>
+          <Avatar sx={{ width: 44, height: 44, bgcolor: AVATAR, fontSize: '1.1rem' }}>{initial}</Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.2 }} noWrap>
               {name} <Box component="span" sx={{ color: MUTED, fontWeight: 400 }}>• {ext}</Box>
@@ -166,11 +209,13 @@ export default function PhoneWidget() {
             <Tooltip title={t('phone.logs', 'Logs')}>
               <IconButton size="small" sx={{ color: logsOpen ? ACCENT : MUTED }} onClick={() => setLogsOpen((v) => !v)}><TerminalIcon fontSize="small" /></IconButton>
             </Tooltip>
-            <Tooltip title={pinned ? t('phone.unpin', 'Unstick') : t('phone.pin', 'Keep open')}>
-              <IconButton size="small" sx={{ color: pinned ? ACCENT : MUTED }} onClick={togglePin}>
-                {pinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
-              </IconButton>
-            </Tooltip>
+            {!dockEl && (
+              <Tooltip title={pinned ? t('phone.unpin', 'Unstick') : t('phone.pin', 'Keep open')}>
+                <IconButton size="small" sx={{ color: pinned ? ACCENT : MUTED }} onClick={togglePin}>
+                  {pinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title={t('phone.close', 'Close')}>
               <IconButton size="small" sx={{ color: MUTED }} onClick={closePanel}><CloseIcon fontSize="small" /></IconButton>
             </Tooltip>
@@ -202,17 +247,17 @@ export default function PhoneWidget() {
               <Typography variant="overline" sx={{ color: MUTED }}>
                 {call.direction === 'inbound' ? t('phone.inbound', 'Incoming') : t('phone.outbound', 'Calling')}
               </Typography>
-              <Typography variant="h6" sx={{ direction: 'ltr', color: '#fff' }}>{call.remote}</Typography>
+              <Typography variant="h6" sx={{ direction: 'ltr', color: STRONG }}>{call.remote}</Typography>
               <Typography variant="body2" sx={{ mb: 2, color: MUTED }}>
                 {call.state === 'active' ? timer : call.state === 'ringing' ? t('phone.ringing', 'Ringing…') : t('phone.connecting', 'Connecting…')}
               </Typography>
               <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
-                <IconButton onClick={() => setMuted(!muted)} sx={{ color: muted ? '#ef4444' : '#fff', bgcolor: 'rgba(255,255,255,0.08)' }}>
+                <IconButton onClick={() => setMuted(!muted)} sx={{ color: muted ? '#ef4444' : STRONG, bgcolor: OVER(0.08) }}>
                   {muted ? <MicOffIcon /> : <MicIcon />}
                 </IconButton>
               </Stack>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 0.5, mb: 2 }}>
-                {KEYS.map((k) => <Button key={k} sx={{ color: '#cbd5e1', fontSize: '1.1rem' }} onClick={() => press(k)}>{k}</Button>)}
+                {KEYS.map((k) => <Button key={k} sx={{ color: SOFT, fontSize: '1.1rem' }} onClick={() => press(k)}>{k}</Button>)}
               </Box>
               <Button fullWidth variant="contained" color="error" startIcon={<CallEndIcon />} onClick={() => hangup()} sx={{ borderRadius: 2, py: 1.1 }}>
                 {t('phone.hangup', 'Hang up')}
@@ -220,13 +265,13 @@ export default function PhoneWidget() {
             </Box>
           ) : (
             <>
-              {tab === 0 && (
+              {shownTab === 0 && (
                 <List dense sx={{ flex: 1, overflow: 'auto' }}>
                   {dials.length === 0 && <Typography variant="body2" sx={{ p: 2, textAlign: 'center', color: MUTED }}>{t('phone.noHistory', 'No recent calls')}</Typography>}
                   {dials.map((d) => (
-                    <ListItemButton key={d.at} onClick={() => { setNumber(d.n); setTab(1); }} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
+                    <ListItemButton key={d.at} onClick={() => { setNumber(d.n); setTab(1); }} sx={{ '&:hover': { bgcolor: OVER(0.05) } }}>
                       <ListItemText
-                        primary={<span style={{ direction: 'ltr', color: '#e5e7eb' }}>{d.n}</span>}
+                        primary={<span style={{ direction: 'ltr', color: TEXT }}>{d.n}</span>}
                         secondary={<span style={{ color: MUTED }}>{new Date(d.at).toLocaleString()}</span>}
                       />
                       <IconButton edge="end" sx={{ color: GREEN }} onClick={(e) => { e.stopPropagation(); startCall(d.n); }}><CallIcon fontSize="small" /></IconButton>
@@ -234,7 +279,7 @@ export default function PhoneWidget() {
                   ))}
                 </List>
               )}
-              {tab === 1 && (
+              {shownTab === 1 && (
                 <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <Box sx={{ position: 'relative', mb: 2 }}>
                     <TextField
@@ -253,12 +298,12 @@ export default function PhoneWidget() {
                     {KEYS.map((k) => (
                       <Box
                         key={k} role="button" onClick={() => press(k)}
-                        sx={{ textAlign: 'center', fontSize: '1.5rem', color: '#dfe5ec', cursor: 'pointer', userSelect: 'none', py: 0.5, borderRadius: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.07)' } }}
+                        sx={{ textAlign: 'center', fontSize: '1.5rem', color: KEYPAD, cursor: 'pointer', userSelect: 'none', py: 0.5, borderRadius: 1, '&:hover': { bgcolor: OVER(0.07) } }}
                       >
                         {k}
                       </Box>
                     ))}
-                    <Box sx={{ gridColumn: '2', textAlign: 'center', fontSize: '1.5rem', color: '#dfe5ec', cursor: 'pointer', userSelect: 'none', py: 0.5, borderRadius: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.07)' } }} role="button" onClick={() => press('+')}>+</Box>
+                    <Box sx={{ gridColumn: '2', textAlign: 'center', fontSize: '1.5rem', color: KEYPAD, cursor: 'pointer', userSelect: 'none', py: 0.5, borderRadius: 1, '&:hover': { bgcolor: OVER(0.07) } }} role="button" onClick={() => press('+')}>+</Box>
                   </Box>
                   <Box sx={{ flex: 1 }} />
                   <Button
@@ -270,7 +315,8 @@ export default function PhoneWidget() {
                   {!connected && <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center', color: MUTED }}>{t('phone.notConnected', 'Not connected — see Settings')}</Typography>}
                 </Box>
               )}
-              {tab === 2 && (
+              {shownTab === 3 && customer && <Box sx={{ flex: 1, overflowY: 'auto' }}>{customer}</Box>}
+              {shownTab === 2 && (
                 <Box sx={{ p: 1, '& .MuiInputBase-root': { bgcolor: '#fff', borderRadius: 1 }, '& label, & .MuiFormControlLabel-label, & .MuiTypography-root': { color: '#e5e7eb' } }}>
                   <SipSettingsForm />
                 </Box>
@@ -282,20 +328,21 @@ export default function PhoneWidget() {
         {/* Bottom tabs — Calls · Dialpad · Settings (portal layout) */}
         {!logsOpen && !inCall && (
           <Tabs
-            value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth"
+            value={shownTab} onChange={(_, v) => setTab(v)} variant="fullWidth"
             sx={{
-              borderTop: '1px solid rgba(255,255,255,0.08)', minHeight: 48, bgcolor: PANEL_HEADER,
+              borderTop: `1px solid ${OVER(0.08)}`, minHeight: 48, bgcolor: PANEL_HEADER,
               '& .MuiTab-root': { minHeight: 48, color: MUTED, fontSize: '0.72rem', fontWeight: 700 },
               '& .Mui-selected': { color: `${ACCENT} !important` },
               '& .MuiTabs-indicator': { backgroundColor: ACCENT },
             }}
           >
-            <Tab icon={<HistoryIcon fontSize="small" />} iconPosition="top" label={t('phone.calls', 'Calls')} />
-            <Tab icon={<DialpadIcon fontSize="small" />} iconPosition="top" label={t('phone.dialpad', 'Dialpad')} />
-            <Tab icon={<SettingsIcon fontSize="small" />} iconPosition="top" label={t('phone.settings', 'Settings')} />
+            <Tab value={0} icon={<HistoryIcon fontSize="small" />} iconPosition="top" label={t('phone.calls', 'Calls')} />
+            <Tab value={1} icon={<DialpadIcon fontSize="small" />} iconPosition="top" label={t('phone.dialpad', 'Dialpad')} />
+            {customer && <Tab value={3} icon={<PersonIcon fontSize="small" />} iconPosition="top" label={t('phone.customer', 'Customer')} data-testid="phone-customer-tab" />}
+            <Tab value={2} icon={<SettingsIcon fontSize="small" />} iconPosition="top" label={t('phone.settings', 'Settings')} />
           </Tabs>
         )}
-      </Drawer>
+      </Shell>
 
       {/* Global incoming-call toast (portal call-toast style) — rings on any page */}
       <CallToast

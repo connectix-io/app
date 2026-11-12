@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listConversations, getThread, subscribeToEvents } from './conversationQueries';
 
+// PGRST205: table/view not in the schema cache. 42P01: relation does not exist.
+const SETUP_CODES = new Set(['PGRST205', '42P01']);
+
 // The conversation list (read model) plus the selected thread, kept live: any
 // appended event triggers a debounced refetch of both.
 export function useConversations() {
@@ -18,7 +21,8 @@ export function useConversations() {
       setRows(await listConversations({ status, search }));
       setError(null);
     } catch (err) {
-      setError(err.message);
+      // The event store is missing: this database was never set up.
+      setError(SETUP_CODES.has(err.code) ? 'setup' : err.message);
     } finally {
       setLoading(false);
     }

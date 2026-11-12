@@ -1,4 +1,4 @@
-.PHONY: help dev check-mothership up down build verify test push deploy ship status ci-list ci-local
+.PHONY: help dev check-mothership up down build verify test push deploy ship status ci-list ci-local setup
 
 # ── Config (override on the CLI or in .env) ─────────────────────────────────
 # The mothership base — read from .env (VITE_MOTHERSHIP_URL), else the cloud.
@@ -49,6 +49,9 @@ verify: ## Health check: deno-api, web, and the /health dependency report
 
 ci-list: ## List the GitHub Actions jobs act can run locally
 	act -l
+
+setup: ## Set up a Supabase project for this app: migrations, lock sign-ups, print env (ARGS="--check" | "--admin-email a@b.co")
+	@node scripts/setup-supabase.mjs $(ARGS)
 
 ci-local: ## Run the CI workflow locally with act (pull_request event; JOB=<id> for one job)
 	@test -f .vars || cp .vars.example .vars
