@@ -100,22 +100,39 @@ function SipPhoneLive({ settings, setSettings, updateSettings, children }) {
   return <SipPhoneContext.Provider value={value}>{children}</SipPhoneContext.Provider>;
 }
 
+// Shown in place of a page that crashed; the phone (and any call) keeps running.
+function PageCrashed() {
+  return (
+    <div role="alert" style={{ padding: 32, textAlign: 'center', fontFamily: 'inherit' }}>
+      <p>Something went wrong on this page · משהו השתבש בעמוד</p>
+      <button type="button" onClick={() => window.location.reload()}>Reload · טעינה מחדש</button>
+    </div>
+  );
+}
+
 export function SipPhoneProvider({ children }) {
   const [settings, setSettings] = useState(() => loadSipSettings());
   const updateSettings = useCallback((next) => { setSettings(next); saveSipSettings(next); }, []);
 
   const degraded = useMemo(() => degradedValue(settings, updateSettings), [settings, updateSettings]);
 
+  // A crash on a page must stop HERE, not at the 'sip' boundary below — that one
+  // is for the softphone itself, and tripping it would hang up an active call and
+  // leave the phone disabled for the rest of the session.
+  const page = (
+    <ErrorBoundary label="page" fallback={<PageCrashed />}>{children}</ErrorBoundary>
+  );
+
   return (
     <ErrorBoundary
       label="sip"
       onError={(err) => console.error('[sip] softphone failed to load; running without it:', err)}
       fallback={() => (
-        <SipPhoneContext.Provider value={degraded}>{children}</SipPhoneContext.Provider>
+        <SipPhoneContext.Provider value={degraded}>{page}</SipPhoneContext.Provider>
       )}
     >
       <SipPhoneLive settings={settings} setSettings={setSettings} updateSettings={updateSettings}>
-        {children}
+        {page}
       </SipPhoneLive>
     </ErrorBoundary>
   );

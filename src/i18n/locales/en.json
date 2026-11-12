@@ -353,7 +353,15 @@
     "logout": "Logout",
     "notifications": "Notifications",
     "status": "Status",
-    "conversations": "Conversations"
+    "conversations": "Conversations",
+    "theme": "Theme",
+    "themes": {
+      "light": "Light",
+      "dim": "Dim",
+      "dark": "Dark",
+      "midnight": "Midnight",
+      "black": "Black"
+    }
   },
   "callDashboard": {
     "subtitle": "Call activity",
@@ -674,7 +682,8 @@
     "outbound": "Calling",
     "ringing": "Ringing…",
     "notConnected": "Not connected — see Settings",
-    "noHistory": "No recent calls"
+    "noHistory": "No recent calls",
+    "noCustomer": "Open a conversation to see the customer"
   },
   "status": {
     "title": "System status",

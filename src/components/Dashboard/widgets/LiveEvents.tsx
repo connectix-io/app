@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Box, Paper, Typography, Chip, List, ListItem, ListItemText, Divider } from '@mui/material';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import { useTranslation } from 'react-i18next';
-import { eventsWsBase } from '../../Calls/useCalls';
+import { eventsWsUrl } from '../../Calls/useCalls';
 
 interface EventMsg {
   type: string;
@@ -30,15 +30,16 @@ export default function LiveEvents({ from, to }: { from?: Date; to?: Date } = {}
   const reconnectTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    const wsUrl = `${eventsWsBase()}?topics=call.%23`;
+    let stopped = false;   // set on unmount so the close handler does not reconnect
 
     function connect() {
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(eventsWsUrl('call.#'));
       wsRef.current = ws;
       setStatus('connecting');
 
       ws.addEventListener('open', () => setStatus('open'));
       ws.addEventListener('close', () => {
+        if (stopped) return;
         setStatus('closed');
         // Auto-reconnect after 3s
         reconnectTimer.current = window.setTimeout(connect, 3000);
@@ -57,6 +58,7 @@ export default function LiveEvents({ from, to }: { from?: Date; to?: Date } = {}
     connect();
 
     return () => {
+      stopped = true;
       if (reconnectTimer.current) window.clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };

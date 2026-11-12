@@ -43,8 +43,9 @@ export default function GlobalSearch({ onOpen, onSearchAll, onStatus }) {
 
   return (
     <ClickAwayListener onClickAway={close}>
-      <Box ref={anchor} sx={{ width: '100%', maxWidth: 720, position: 'relative' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, height: 46, borderRadius: 1.5, bgcolor: 'action.hover' }}>
+      <Box ref={anchor} sx={{ width: '100%', maxWidth: 560, position: 'relative' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, height: 42, borderRadius: 1.5,
+          bgcolor: 'background.paper', border: 1, borderColor: 'divider', '&:focus-within': { borderColor: 'primary.main' } }}>
           <SearchIcon sx={{ color: 'text.secondary' }} />
           <InputBase
             fullWidth value={term} placeholder={t('conversations.searchAll')}

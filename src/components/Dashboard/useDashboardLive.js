@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { eventsWsBase } from '../Calls/useCalls';
+import { eventsWsUrl } from '../Calls/useCalls';
 
 /**
  * useDashboardLive — the live agents/extensions panel, streamed from the
@@ -21,14 +21,15 @@ export function useDashboardLive() {
   const reconnectTimer = useRef(null);
 
   useEffect(() => {
-    const url = `${eventsWsBase()}?topics=dashboard.%23`;
+    let stopped = false;   // set on unmount so the close handler does not reconnect
 
     function connect() {
-      const ws = new WebSocket(url);
+      const ws = new WebSocket(eventsWsUrl('dashboard.#'));
       wsRef.current = ws;
       setStatus('connecting');
       ws.addEventListener('open', () => setStatus('open'));
       ws.addEventListener('close', () => {
+        if (stopped) return;
         setStatus('closed');
         reconnectTimer.current = window.setTimeout(connect, 3000);
       });
@@ -49,6 +50,7 @@ export function useDashboardLive() {
 
     connect();
     return () => {
+      stopped = true;
       if (reconnectTimer.current) window.clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };
@@ -57,4 +59,3 @@ export function useDashboardLive() {
   return { widgets, status };
 }
 
-export default useDashboardLive;

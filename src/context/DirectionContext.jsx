@@ -8,14 +8,23 @@ import createCache from '@emotion/cache';
 import { theme as baseMuiTheme } from '../theme/muiTheme';
 import { brand } from '../config';
 
-// Same colours as the phone dock: slate panels, orange accent, green for calls.
-const DARK_PALETTE = {
-  background: { default: '#2f3640', paper: '#3b4350' },
-  text: { primary: '#ffffff', secondary: 'rgba(255,255,255,0.65)' },
-  divider: 'rgba(255,255,255,0.10)',
-  primary: { main: '#f5a623', dark: '#d98e12', light: '#f8bd5a', contrastText: '#1f2328' },
-  success: { main: '#34c759', contrastText: '#ffffff' },
+// Themes: light plus four levels of dark. "dim" is the phone dock's slate; each
+// next one is darker, down to pure black for OLED screens. Orange accent, green calls.
+const darkTheme = (bg, paper, divider) => ({
+  background: { default: bg, paper },
+  text: { primary: "#ffffff", secondary: "rgba(255,255,255,0.65)" },
+  divider,
+  primary: { main: "#f5a623", dark: "#d98e12", light: "#f8bd5a", contrastText: "#1f2328" },
+  success: { main: "#34c759", contrastText: "#ffffff" },
+});
+const THEMES = {
+  light: null,
+  dim: darkTheme("#2f3640", "#3b4350", "rgba(255,255,255,0.10)"),
+  dark: darkTheme("#1e232a", "#272d35", "rgba(255,255,255,0.09)"),
+  midnight: darkTheme("#12151a", "#1a1e24", "rgba(255,255,255,0.08)"),
+  black: darkTheme("#000000", "#0d0f12", "rgba(255,255,255,0.12)"),
 };
+const THEME_NAMES = Object.keys(THEMES);
 
 const DirectionContext = createContext();
 
@@ -33,19 +42,23 @@ export const DirectionProvider = ({ children }) => {
     return localStorage.getItem('app-direction') || 'rtl';
   });
 
-  // Light / dark: remembered per browser, first visit follows the system setting.
-  const [colorMode, setColorMode] = useState(() => {
+  // Theme: remembered per browser; first visit follows the system setting.
+  // (Old saved value "dark" maps to "dim", the phone colours.)
+  const [themeName, setThemeNameState] = useState(() => {
     try {
-      const saved = localStorage.getItem('color-mode');
-      if (saved === 'light' || saved === 'dark') return saved;
+      const saved = localStorage.getItem("color-mode");
+      if (saved === "dark") return "dim";
+      if (saved in THEMES) return saved;
     } catch { /* private mode */ }
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dim" : "light";
   });
-  const toggleColorMode = () => setColorMode((m) => {
-    const next = m === 'dark' ? 'light' : 'dark';
-    try { localStorage.setItem('color-mode', next); } catch { /* private mode */ }
-    return next;
-  });
+  const setThemeName = (name) => {
+    try { localStorage.setItem("color-mode", name); } catch { /* private mode */ }
+    setThemeNameState(name);
+  };
+  const colorMode = themeName === "light" ? "light" : "dark";
+  // Click cycles: light → dim → dark → midnight → black → light.
+  const toggleColorMode = () => setThemeName(THEME_NAMES[(THEME_NAMES.indexOf(themeName) + 1) % THEME_NAMES.length]);
 
   // Create emotion cache based on direction
   const emotionCache = useMemo(() => {
@@ -77,11 +90,11 @@ export const DirectionProvider = ({ children }) => {
       palette: {
         ...baseMuiTheme.palette,
         mode: colorMode,
-        ...(colorMode === 'dark' ? DARK_PALETTE : {}),
+        ...(THEMES[themeName] || {}),
         ...(brandColor
           ? { primary: { ...baseMuiTheme.palette?.primary, main: brandColor } }
           : {}),
-        ...(colorMode === 'dark' ? { primary: DARK_PALETTE.primary } : {}),
+        ...(THEMES[themeName] ? { primary: THEMES[themeName].primary } : {}),
       },
       components: {
         ...baseMuiTheme.components,
@@ -99,7 +112,7 @@ export const DirectionProvider = ({ children }) => {
         },
       },
     });
-  }, [direction, colorMode]);
+  }, [direction, colorMode, themeName]);
 
   // The page outside MUI components follows the mode too.
   useEffect(() => {
@@ -141,6 +154,8 @@ export const DirectionProvider = ({ children }) => {
     isRTL: direction === 'rtl',
     colorMode,
     toggleColorMode,
+    themeName,
+    setThemeName,
   };
 
   return (

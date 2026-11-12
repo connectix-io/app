@@ -374,7 +374,15 @@
     "logout": "יציאה",
     "notifications": "התראות",
     "status": "סטטוס",
-    "conversations": "שיחות"
+    "conversations": "שיחות",
+    "theme": "ערכת צבעים",
+    "themes": {
+      "light": "בהיר",
+      "dim": "עמום",
+      "dark": "כהה",
+      "midnight": "חצות",
+      "black": "שחור"
+    }
   },
   "callDashboard": {
     "subtitle": "פעילות השיחות",
@@ -695,7 +703,8 @@
     "outbound": "מחייג",
     "ringing": "מצלצל…",
     "notConnected": "לא מחובר — ראה הגדרות",
-    "noHistory": "אין שיחות אחרונות"
+    "noHistory": "אין שיחות אחרונות",
+    "noCustomer": "פתחו שיחה כדי לראות את פרטי הלקוח"
   },
   "status": {
     "title": "סטטוס מערכת",

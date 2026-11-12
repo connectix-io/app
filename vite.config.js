@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // When this build was made, shown small at the bottom of the inbox sidebar.
+    define: { 'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()) },
     // deno-api now serves everything (calls/events store + app endpoints) on a
     // single port, so the proxy needs just two upstreams: deno-api and the
     // external cloud API. The browser only ever talks to Vite; it forwards

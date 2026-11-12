@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MOCK_CALLS } from './mock-data';
 import { getStoredMockTranscript } from './conversation-mocks';
 import { getCalls } from '../../services/callsApi';
+import { getToken } from '../../lib/auth';
 
 /**
  * useCalls — a page of calls from voipappz-api (GET /api/calls).
@@ -27,13 +28,20 @@ export const EVENTS_API = import.meta.env.VITE_EVENTS_API_URL ?? '';
 
 // WS base for the LiveEvents dashboard widget (deno /ws/events). Same-origin by
 // default so it rides the Vite proxy.
-export function eventsWsBase() {
+function eventsWsBase() {
   if (import.meta.env.VITE_EVENTS_WS_URL) return import.meta.env.VITE_EVENTS_WS_URL;
   if (typeof window !== 'undefined' && window.location) {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
     return `${proto}://${window.location.host}/ws/events`;
   }
   return 'ws://localhost:4001/ws/events';
+}
+
+// The live feed needs the signed-in user's token (WebSockets cannot send headers).
+// Built at each (re)connect so a refreshed token is used.
+export function eventsWsUrl(topics) {
+  const q = new URLSearchParams({ topics, token: getToken() || '' });
+  return `${eventsWsBase()}?${q.toString()}`;
 }
 
 export function useCalls() {

@@ -158,7 +158,7 @@ reachability, and the `/health` dependency report (`cable` / `duckdb` / `supabas
 
 ### Frontend (React + Vite)
 - **Framework**: React 19.2 with Vite 6.3.5 for development
-- **UI Library**: Material-UI (MUI) 7.1+ + Radix UI components + Shadcn/ui
+- **UI Library**: Material-UI (MUI) 7.1+
 - **Styling**: TailwindCSS 3.4+ with RTL support and animations
 - **State Management**: React Context (AuthContext, DirectionContext)
 - **Internationalization**: react-i18next (Hebrew default, RTL)
@@ -356,7 +356,7 @@ FIREBERRY_TOKEN=xxx
 
 ### Variables you should NOT set in dev
 
-- **`VITE_API_BASE_URL`** — when set, `src/lib/httpClient.ts` builds *absolute* URLs
+- **`VITE_API_BASE_URL`** — when set, `src/config.js` builds *absolute* URLs
   (`${VITE_API_BASE_URL}/apps/...`) that bypass Vite's proxy and trigger
   cross-origin browser requests. Leave it unset so URLs stay relative and route
   through Vite → `deno-api`. The symptom is `Cross-Origin Request Blocked … at
@@ -382,7 +382,6 @@ Add tenant-specific roles (sales, technician, back-office, etc.) by extending `R
 - **React**: 19.2.0 (latest)
 - **Vite**: 6.3.5 (build tool)
 - **Material-UI**: 7.1+ (UI library)
-- **Radix UI**: Complete component collection
 - **TailwindCSS**: 3.4+ with RTL support
 - **Supabase**: 2.76+ (backend-as-a-service)
 - **React Router**: 7.6+ (navigation)
@@ -583,8 +582,7 @@ mcp supabase describe users
 | ├── `MainMenu/` | Sidebar / nav |
 | ├── `Notifications/` | Notification panel |
 | ├── `Reports/` | Reusable reports/data-table framework |
-| ├── `common/` | Shared components (`LanguageSelector`) |
-| └── `ui/` | Shadcn/ui design system components |
+| └── `common/` | Shared components (ErrorBoundary, Filters, StatusChip) |
 | `src/context/` | React contexts (Auth, Direction, Audit) |
 | `src/hooks/` | Custom hooks (currently `useACL`) |
 | `src/i18n/` | i18next config + locales |

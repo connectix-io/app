@@ -6,7 +6,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
-import { STATUS_ICON } from './conversationFormat';
+import { STATUS_ICON, PANE_HEADER, CARD } from './conversationFormat';
 import { useTranslation } from 'react-i18next';
 import { useDirection } from '../../context/DirectionContext';
 import InboxRail from './InboxRail';
@@ -18,16 +18,16 @@ import { STATUSES } from './conversationCommands';
 import ConversationThread from './ConversationThread';
 import CustomerPanel from './CustomerPanel';
 import NewConversationDialog from './NewConversationDialog';
-import { channelIcon, formatWhen } from './conversationFormat';
+import { formatWhen } from './conversationFormat';
 
 const LIST_KEY = 'inbox-list-open';
 const readListOpen = () => { try { return localStorage.getItem(LIST_KEY) !== '0'; } catch { return true; } };
 const STATUS_DOT = { open: 'primary.main', pending: 'warning.main', resolved: 'success.main' };
 const LIST_WIDTH = 400;
 
-// The inbox, WhatsApp Web style: the left sidebar, the main search on top, then
-// the conversation list, the chat and the docked phone (customer info is a phone
-// tab). On a phone the list and the chat take turns.
+// The inbox, WhatsApp Web style: the left sidebar, then the conversation list,
+// the chat (its header line holds the main search) and the docked phone
+// (customer info is a phone tab). Each pane is a bordered card, like the phone. On a phone the list and the chat take turns.
 export default function Conversations() {
   const { t } = useTranslation();
   const { direction } = useDirection();
@@ -49,6 +49,7 @@ export default function Conversations() {
   const customer = c.selected
     ? <Box dir={direction}><CustomerPanel embedded conversation={c.selected} events={c.thread} /></Box>
     : null;
+  const search = <GlobalSearch onOpen={open} onSearchAll={c.setSearch} onStatus={c.setStatus} />;
   const phone = (
     <ErrorBoundary label="phone-widget" fallback={null}>
       <PhoneWidget dock={narrow ? null : 'phone-dock'} customer={customer} />
@@ -56,53 +57,51 @@ export default function Conversations() {
   );
 
   return (
-    <Box dir={direction} data-testid="conversations-page" sx={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <Box dir={direction} data-testid="conversations-page" sx={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden',
+      bgcolor: (th) => (th.palette.mode === 'dark' ? th.palette.background.default : th.palette.grey[100]) }}>
       <InboxRail listOpen={showList} onToggleList={() => setListOpen(!showList)} />
 
-      {/* Everything right of the rail: the main search on top, then list | chat | phone. */}
-      <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ height: 68, flexShrink: 0, px: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: 1, borderColor: 'divider' }}>
-          <GlobalSearch onOpen={open} onSearchAll={c.setSearch} onStatus={c.setStatus} />
-        </Box>
-        <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex' }}>
 
-      {/* Conversation list — slides open / closed. */}
+      {/* Conversation list — a card that slides open / closed. */}
       {(showList || !narrow) && (
         <Box sx={{
           width: narrow ? '100%' : (showList ? LIST_WIDTH : 0), flexShrink: 0, overflow: 'hidden',
-          transition: 'width 240ms ease', display: 'flex', flexDirection: 'column',
-          borderInlineEnd: showList && !narrow ? 1 : 0, borderColor: 'divider', bgcolor: 'background.paper',
+          transition: 'width 240ms ease', display: 'flex',
         }}>
-          <Box sx={{ minWidth: narrow ? 0 : LIST_WIDTH, display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Box sx={{ height: 72, flexShrink: 0, px: 2.5, display: 'flex', alignItems: 'center' }}>
-              <Typography sx={{ flexGrow: 1, fontSize: 24, fontWeight: 700 }}>{t('conversations.title')}</Typography>
+          <Box sx={{ ...CARD, width: '100%', minWidth: narrow ? 0 : LIST_WIDTH - 16, marginInlineEnd: 0 }}>
+            {/* Filters and + share the top line with the chat header and the phone. */}
+            <Box sx={{ ...PANE_HEADER, px: 1.5, gap: 0.75 }}>
+              <Box sx={{ display: 'flex', gap: 0.75, flexGrow: 1, minWidth: 0, overflow: 'hidden' }}>
+                {/* Only the selected filter shows its name; the others are icons with a tooltip, so all fit. */}
+                {['all', ...STATUSES].map((s) => (
+                  <Tooltip key={s} title={c.status === s ? '' : t(`conversations.status.${s}`)}>
+                  <Chip icon={STATUS_ICON[s]} label={c.status === s ? t(`conversations.status.${s}`) : undefined}
+                    aria-label={t(`conversations.status.${s}`)} onClick={() => c.setStatus(s)}
+                    data-testid={`filter-${s}`} variant={c.status === s ? 'filled' : 'outlined'}
+                    sx={{
+                      fontSize: 14, height: 32, flexShrink: 0, borderRadius: 1.5,
+                      ...(c.status === s
+                        ? { bgcolor: 'primary.main', color: 'primary.contrastText', '& .MuiChip-icon': { color: 'inherit' }, '&:hover': { bgcolor: 'primary.dark' } }
+                        : { bgcolor: 'background.paper', '& .MuiChip-label': { display: 'none' }, '& .MuiChip-icon': { mx: 1 } }),
+                    }} />
+                  </Tooltip>
+                ))}
+              </Box>
               <Tooltip title={t('conversations.new')}>
                 <IconButton onClick={() => setCreating(true)} data-testid="conversations-new" aria-label={t('conversations.new')}
-                  sx={{ borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }}>
+                  sx={{ flexShrink: 0, borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }}>
                   <AddIcon />
                 </IconButton>
               </Tooltip>
             </Box>
-
-            <Box sx={{ display: 'flex', gap: 0.75, px: 2, pb: 1.5, flexWrap: 'nowrap', overflowX: 'auto' }}>
-              {['all', ...STATUSES].map((s) => (
-                <Chip key={s} icon={STATUS_ICON[s]} label={t(`conversations.status.${s}`)} onClick={() => c.setStatus(s)}
-                  data-testid={`filter-${s}`}
-                  sx={{
-                    fontSize: 14, height: 32, flexShrink: 0, borderRadius: 1.5,
-                    ...(c.status === s
-                      ? { bgcolor: 'primary.main', color: 'primary.contrastText', '& .MuiChip-icon': { color: 'inherit' }, '&:hover': { bgcolor: 'primary.dark' } }
-                      : { bgcolor: 'action.hover' }),
-                  }} />
-              ))}
-            </Box>
+            {narrow && <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>{search}</Box>}
 
             {c.error === 'setup' && (
               <Alert severity="info" sx={{ m: 2 }} data-testid="conversations-setup">{t('conversations.setupNeeded')}</Alert>
             )}
             {c.error && c.error !== 'setup' && <Alert severity="error" sx={{ m: 2 }}>{c.error}</Alert>}
 
-            <List disablePadding sx={{ flexGrow: 1, overflowY: 'auto', px: 1 }} data-testid="conversations-list">
+            <List disablePadding sx={{ flexGrow: 1, overflowY: 'auto', px: 1, pt: 1 }} data-testid="conversations-list">
               {c.loading && <Box sx={{ p: 3, textAlign: 'center' }}><CircularProgress size={24} /></Box>}
               {!c.loading && !c.error && c.rows.length === 0 && (
                 <Typography sx={{ p: 3 }} align="center" color="text.secondary">{t('conversations.empty')}</Typography>
@@ -116,24 +115,27 @@ export default function Conversations() {
       )}
 
       {showThread && (
-        <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ ...CARD, flexGrow: 1, minWidth: 0, minHeight: 0, marginInlineEnd: 0 }}>
           {c.selected ? (
-            <ConversationThread conversation={c.selected} events={c.thread} actions={phone}
+            <ConversationThread conversation={c.selected} events={c.thread} actions={phone} search={narrow ? null : search}
               onBack={narrow ? () => setListOpen(true) : null} />
           ) : (
-            <Box sx={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: 1, color: 'text.secondary', bgcolor: 'background.default' }}>
-              <Box sx={{ position: 'absolute', top: 16, insetInlineEnd: 16 }}>{phone}</Box>
-              <ForumOutlinedIcon sx={{ fontSize: 56 }} />
-              <Typography sx={{ fontSize: 18 }}>{t('conversations.pick')}</Typography>
-            </Box>
+            <>
+              <Box sx={{ ...PANE_HEADER, gap: 1.5 }}>
+                <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>{narrow ? null : search}</Box>
+                {phone}
+              </Box>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 1, color: 'text.secondary' }}>
+                <ForumOutlinedIcon sx={{ fontSize: 56 }} />
+                <Typography sx={{ fontSize: 18 }}>{t('conversations.pick')}</Typography>
+              </Box>
+            </>
           )}
         </Box>
       )}
 
-      <Box id="phone-dock" sx={{ display: 'flex', flexShrink: 0, height: '100%', bgcolor: 'background.default' }} />
-        </Box>
-      </Box>
+      <Box id="phone-dock" sx={{ display: 'flex', flexShrink: 0, height: '100%' }} />
 
       <NewConversationDialog
         open={creating}
@@ -160,7 +162,7 @@ function ConversationItem({ row, selected, onClick }) {
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography color="text.secondary" noWrap sx={{ flexGrow: 1, fontSize: 15 }}>
-            {channelIcon(row.channel)} {row.last_text || t(`conversations.channel.${row.channel}`, row.channel)}
+            {row.last_text || t(`conversations.channel.${row.channel}`, row.channel)}
           </Typography>
           <Box title={t(`conversations.status.${row.status}`)}
             sx={{ width: 10, height: 10, borderRadius: 0.5, flexShrink: 0, bgcolor: STATUS_DOT[row.status] || 'grey.400' }} />

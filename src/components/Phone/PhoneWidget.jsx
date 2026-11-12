@@ -37,8 +37,6 @@ const LOG_COLOR = { error: '#f87171', warn: '#fbbf24', debug: '#94a3b8', log: '#
 const LOG_KEY = 'sip-recent-dials';
 
 // Portal palette (matches the old WebRTC admin's right-hand phone dock).
-const PANEL_DARK = '#3b4350';      // panel body
-const PANEL_HEADER_DARK = '#2f3640'; // darker header strip
 const ACCENT_DARK = '#f5a623';     // active-tab orange
 const GREEN = '#34c759';      // presence + call CTA
 const MUTED_DARK = '#9aa6b6';      // secondary text on dark
@@ -52,7 +50,7 @@ function DockShell({ open, children, PaperProps, dockTarget }) {
   if (!open) return null;
   return createPortal(
     <Box dir="ltr" data-testid="phone-panel"
-      sx={{ ...PaperProps.sx, width: 340, flexShrink: 0, m: 1, height: 'calc(100% - 16px)', borderRadius: 3, overflow: 'hidden', zIndex: 'auto' }}>
+      sx={{ ...PaperProps.sx, width: 340, flexShrink: 0, m: 1, height: 'calc(100% - 16px)', borderRadius: 2, border: 1, borderColor: 'divider', overflow: 'hidden', zIndex: 'auto' }}>
       {children}
     </Box>,
     dockTarget,
@@ -83,8 +81,8 @@ export default function PhoneWidget({ dock = null, onDockOpenChange = null, cust
   // Light / dark follows the app theme; dark keeps the portal's slate dock.
   const theme = useTheme();
   const dark = theme.palette.mode === 'dark';
-  const PANEL = dark ? PANEL_DARK : theme.palette.background.paper;
-  const PANEL_HEADER = dark ? PANEL_HEADER_DARK : theme.palette.grey[100];
+  const PANEL = theme.palette.background.paper;
+  const PANEL_HEADER = dark ? theme.palette.background.default : theme.palette.grey[100];
   const ACCENT = dark ? ACCENT_DARK : theme.palette.primary.main;
   const MUTED = dark ? MUTED_DARK : theme.palette.text.secondary;
   const TEXT = dark ? '#e5e7eb' : theme.palette.text.primary;
@@ -149,7 +147,7 @@ export default function PhoneWidget({ dock = null, onDockOpenChange = null, cust
 
   const Shell = dockEl ? DockShell : Drawer;
   // The Customer tab exists only while a conversation is open.
-  const shownTab = tab === 3 && !customer ? 1 : tab;
+  const shownTab = tab;
 
   return (
     <>
@@ -315,7 +313,12 @@ export default function PhoneWidget({ dock = null, onDockOpenChange = null, cust
                   {!connected && <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center', color: MUTED }}>{t('phone.notConnected', 'Not connected — see Settings')}</Typography>}
                 </Box>
               )}
-              {shownTab === 3 && customer && <Box sx={{ flex: 1, overflowY: 'auto' }}>{customer}</Box>}
+              {shownTab === 3 && (customer
+                ? <Box sx={{ flex: 1, overflowY: 'auto' }}>{customer}</Box>
+                : <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, p: 3, color: MUTED, textAlign: 'center' }}>
+                    <PersonIcon sx={{ fontSize: 44 }} />
+                    <Typography>{t('phone.noCustomer', 'Open a conversation to see the customer')}</Typography>
+                  </Box>)}
               {shownTab === 2 && (
                 <Box sx={{ p: 1, '& .MuiInputBase-root': { bgcolor: '#fff', borderRadius: 1 }, '& label, & .MuiFormControlLabel-label, & .MuiTypography-root': { color: '#e5e7eb' } }}>
                   <SipSettingsForm />
@@ -338,7 +341,7 @@ export default function PhoneWidget({ dock = null, onDockOpenChange = null, cust
           >
             <Tab value={0} icon={<HistoryIcon fontSize="small" />} iconPosition="top" label={t('phone.calls', 'Calls')} />
             <Tab value={1} icon={<DialpadIcon fontSize="small" />} iconPosition="top" label={t('phone.dialpad', 'Dialpad')} />
-            {customer && <Tab value={3} icon={<PersonIcon fontSize="small" />} iconPosition="top" label={t('phone.customer', 'Customer')} data-testid="phone-customer-tab" />}
+            <Tab value={3} icon={<PersonIcon fontSize="small" />} iconPosition="top" label={t('phone.customer', 'Customer')} data-testid="phone-customer-tab" />
             <Tab value={2} icon={<SettingsIcon fontSize="small" />} iconPosition="top" label={t('phone.settings', 'Settings')} />
           </Tabs>
         )}

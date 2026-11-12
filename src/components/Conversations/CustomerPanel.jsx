@@ -7,11 +7,16 @@ import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CallOutlinedIcon from '@mui/icons-material/CallOutlined';
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
+import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
 import { useTranslation } from 'react-i18next';
 import { channelIcon, formatWhen, formatDuration, PANE_HEADER, shortName } from './conversationFormat';
 
 // Interactions = contact with the customer. Status / assignment changes live in the chat.
-const HISTORY = { 'message.added': '💬', 'note.added': '📝', 'call.logged': '📞' };
+const HISTORY = {
+  'message.added': <ChatBubbleOutlineIcon fontSize="small" />,
+  'note.added': <StickyNote2OutlinedIcon fontSize="small" />,
+  'call.logged': <CallOutlinedIcon fontSize="small" />,
+};
 
 // The customer, as Zendesk shows it beside a ticket — but read straight from
 // this customer's event stream: who they are, totals, and every interaction.
@@ -78,7 +83,7 @@ export default function CustomerPanel({ conversation, events, embedded = false }
         )}
         {interactions.map((e) => (
           <Box key={e.id} sx={{ display: 'flex', gap: 1.5, py: 0.75, alignItems: 'baseline' }}>
-            <Box component="span" sx={{ width: 20, textAlign: 'center' }}>{HISTORY[e.type]}</Box>
+            <Box component="span" aria-hidden sx={{ display: 'flex', color: 'text.secondary', alignSelf: 'flex-start', pt: 0.25 }}>{HISTORY[e.type]}</Box>
             <Box sx={{ minWidth: 0, flexGrow: 1 }}>
               <Typography variant="body2" noWrap>
                 {e.data.text || e.data.summary || t(`conversations.kind.${e.type}`, e.type)}

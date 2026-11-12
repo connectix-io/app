@@ -15,7 +15,7 @@ import {
 } from './config.ts';
 import { createJwtVerifier, unauthorizedResponse, type JwtVerifier } from './auth_middleware.ts';
 import { fetchTranscript } from './engine.ts';
-import { dashboardCallsPerHour } from './influx.ts';
+import { dashboardCallsPerHour, sqlUuidList } from './influx.ts';
 import { INFLUX_ENABLED } from './config.ts';
 import { eventFreshness, type Freshness } from './health_freshness.ts';
 import { createCableClient, mintCableToken, type CableClient } from "./cable.ts";
@@ -282,7 +282,14 @@ export function createRequestHandler(supabase: any, jwtVerifier?: JwtVerifier) {
       }
     }
 
-    if (url.pathname === "/ws/events" && request.headers.get("upgrade") === "websocket") return handleWebSocket(request);
+    // Live feed: signed-in users only. Browsers cannot set headers on a WebSocket,
+    // so the token comes as ?token= and is checked like a Bearer header.
+    if (url.pathname === "/ws/events" && request.headers.get("upgrade") === "websocket") {
+      const token = url.searchParams.get("token") || "";
+      const authResult = await verifyJwt(new Request(request.url, { headers: { Authorization: `Bearer ${token}` } }));
+      if (!authResult.authenticated) return unauthorizedResponse(authResult.error || "Unauthorized", CORS_HEADERS);
+      return handleWebSocket(request);
+    }
 
     // ── Call transcript — GET /calls/:id/transcript ──
     // Read on request from the engine event store (the mothership's transcription
@@ -305,13 +312,9 @@ export function createRequestHandler(supabase: any, jwtVerifier?: JwtVerifier) {
     // apiv3_ token never reaches the browser. JWT-gated; env-scoped via ?env=
     // (repeatable / comma list). ?minutes= window (default 1440).
     if (request.method === "GET" && url.pathname === "/dashboard/calls-per-hour") {
+      // Signed-in users only — no exception when auth is not configured.
       const authResult = await verifyJwt(request);
-      // Auth gate is temporarily relaxed ONLY when no auth backend is configured
-      // (the Supabase verifier is vestigial after the accounts-JWT migration — it
-      // reports "Auth not configured"). A real verifier still rejects bad tokens,
-      // so this re-gates automatically once deno verifies the accounts JWT.
-      // TODO: verify the accounts JWT here and drop this exception.
-      if (!authResult.authenticated && authResult.error !== "Auth not configured") {
+      if (!authResult.authenticated) {
         return unauthorizedResponse(authResult.error || "Unauthorized", CORS_HEADERS);
       }
       if (!INFLUX_ENABLED) {
@@ -319,6 +322,12 @@ export function createRequestHandler(supabase: any, jwtVerifier?: JwtVerifier) {
       }
       const minutes = parseInt(url.searchParams.get("minutes") || "1440");
       const environmentUuids = url.searchParams.getAll("env").flatMap((v) => v.split(",")).map((s) => s.trim()).filter(Boolean);
+      // Never run unscoped: without at least one valid environment the query
+      // would cover every customer.
+      // TODO: check the environments belong to the caller once tokens carry the tenant.
+      if (!sqlUuidList(environmentUuids)) {
+        return new Response(JSON.stringify({ error: "env (environment uuid) required", points: [] }), { status: 400, headers: JSON_HEADERS });
+      }
       try {
         const points = await dashboardCallsPerHour({ minutes, environmentUuids });
         return new Response(JSON.stringify({ points }), { status: 200, headers: JSON_HEADERS });

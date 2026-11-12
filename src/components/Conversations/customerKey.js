@@ -5,7 +5,7 @@
 // with no lookup table and no race. Keep in sync with api/customer_key.ts.
 
 /** Normalize a phone to digits in international form (Israeli 0-prefix → 972). */
-export function normalizePhone(raw) {
+function normalizePhone(raw) {
   let d = String(raw || '').replace(/\D/g, '');
   if (d.startsWith('00')) d = d.slice(2);
   else if (d.startsWith('0')) d = `972${d.slice(1)}`;
