@@ -18,6 +18,8 @@ import { STATUSES } from './conversationCommands';
 import ConversationThread from './ConversationThread';
 import CustomerPanel from './CustomerPanel';
 import NewConversationDialog from './NewConversationDialog';
+import InboxTour, { tourSeen } from './InboxTour';
+import InboxHelp from './InboxHelp';
 import { formatWhen } from './conversationFormat';
 
 const LIST_KEY = 'inbox-list-open';
@@ -36,6 +38,8 @@ export default function Conversations() {
   const c = useConversations();
   const [creating, setCreating] = useState(false);
   const [listOpen, setListOpenState] = useState(readListOpen);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [touring, setTouring] = useState(() => !tourSeen());   // first visit: show the tour
 
   const setListOpen = (value) => {
     try { localStorage.setItem(LIST_KEY, value ? '1' : '0'); } catch { /* private mode */ }
@@ -59,7 +63,7 @@ export default function Conversations() {
   return (
     <Box dir={direction} data-testid="conversations-page" sx={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden',
       bgcolor: (th) => (th.palette.mode === 'dark' ? th.palette.background.default : th.palette.grey[100]) }}>
-      <InboxRail listOpen={showList} onToggleList={() => setListOpen(!showList)} />
+      <InboxRail listOpen={showList} onToggleList={() => setListOpen(!showList)} onHelp={() => setHelpOpen(true)} />
 
 
       {/* Conversation list — a card that slides open / closed. */}
@@ -136,6 +140,9 @@ export default function Conversations() {
       )}
 
       <Box id="phone-dock" sx={{ display: 'flex', flexShrink: 0, height: '100%' }} />
+
+      <InboxHelp open={helpOpen} onClose={() => setHelpOpen(false)} onTour={() => { if (narrow) setListOpen(true); setTouring(true); }} />
+      <InboxTour open={touring && !c.loading} onClose={() => setTouring(false)} />
 
       <NewConversationDialog
         open={creating}

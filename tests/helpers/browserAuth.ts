@@ -44,6 +44,7 @@ export async function loginWithAccount(
     ({ session }) => {
       localStorage.setItem('app-language', 'en');
       localStorage.setItem('auth', JSON.stringify(session));
+      localStorage.setItem('inbox-tour-done', '1');   // the first-visit tour would cover the screen
     },
     { session },
   );

@@ -4,6 +4,7 @@ import TranslateIcon from '@mui/icons-material/Translate';
 import DarkModeIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeIcon from '@mui/icons-material/LightModeOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
@@ -14,7 +15,7 @@ import { useAppTranslation } from '../../i18n/useAppTranslation';
 // option as an icon (no popup menu), who you are, and at the bottom the
 // Connectix mark with the version (build date and time), small.
 // Language also sets the direction (Hebrew = right-to-left).
-export default function InboxRail({ listOpen, onToggleList }) {
+export default function InboxRail({ listOpen, onToggleList, onHelp }) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { direction, colorMode, toggleColorMode, themeName } = useDirection();
@@ -50,6 +51,7 @@ export default function InboxRail({ listOpen, onToggleList }) {
 
       <Box sx={{ flexGrow: 1 }} />
 
+      {action(t('menu.help'), <HelpOutlineIcon />, onHelp, 'rail-help')}
       {action(language === 'he' ? 'English' : 'עברית', <TranslateIcon />, () => changeLanguage(language === 'he' ? 'en' : 'he'), 'rail-language')}
       {/* Theme: each click goes one step darker (light → dim → dark → midnight → black → light). */}
       {action(`${t('menu.theme')}: ${t(`menu.themes.${themeName}`)}`,

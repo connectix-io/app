@@ -361,7 +361,8 @@
       "dark": "Dark",
       "midnight": "Midnight",
       "black": "Black"
-    }
+    },
+    "help": "Help"
   },
   "callDashboard": {
     "subtitle": "Call activity",
@@ -789,6 +790,52 @@
       "unassigned": "Unassigned",
       "call_in": "Incoming call",
       "call_out": "Outgoing call"
+    }
+  },
+  "tour": {
+    "step": "Step {{n}} of {{total}}",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "done": "Got it",
+    "list": {
+      "title": "Your conversations",
+      "text": "One conversation per customer. Click a name to open it."
+    },
+    "new": {
+      "title": "New conversation",
+      "text": "Click + to add a customer."
+    },
+    "search": {
+      "title": "Search",
+      "text": "Type a name, phone or word."
+    },
+    "phone": {
+      "title": "Phone",
+      "text": "Call and answer here."
+    },
+    "help": {
+      "title": "Help",
+      "text": "Click ? any time."
+    }
+  },
+  "help": {
+    "title": "Help",
+    "close": "Close help",
+    "tour": "Show me around again",
+    "q": {
+      "start": "Start a conversation",
+      "reply": "Send a message",
+      "find": "Find a customer",
+      "call": "Call a customer",
+      "list": "The list disappeared"
+    },
+    "a": {
+      "start": "Click + above the list, fill in name and phone, click Create.",
+      "reply": "Open the conversation, type at the bottom, press Enter.",
+      "find": "Type in the search box at the top.",
+      "call": "Phone on the right → Dialpad → type the number → green button.",
+      "list": "Click ☰ at the top left."
     }
   }
 }

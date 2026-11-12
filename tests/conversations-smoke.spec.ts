@@ -14,6 +14,11 @@ const E2E_PASSWORD = process.env.E2E_PASSWORD || '';
 const field = (page, id) => page.getByTestId(id).locator('input');
 
 test.describe('conversations smoke', () => {
+  // The first-visit tour covers the screen; these tests drive the inbox itself.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('inbox-tour-done', '1'));
+  });
+
   test('login screen renders', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByTestId('login-form')).toBeVisible();

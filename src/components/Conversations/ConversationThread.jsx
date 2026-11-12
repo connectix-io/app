@@ -71,14 +71,14 @@ export default function ConversationThread({ conversation, events, actions = nul
         <Avatar variant="rounded" sx={{ width: 44, height: 44, bgcolor: 'primary.main' }}>
           {(conversation.contact_name || '?').trim().charAt(0).toUpperCase()}
         </Avatar>
-        <Box sx={{ minWidth: 0, flex: '0 1 auto', maxWidth: 200 }}>
+        <Box sx={{ minWidth: 120, flex: '1 1 auto' }}>
           <Typography sx={{ fontSize: 18, fontWeight: 600 }} noWrap>{conversation.contact_name}</Typography>
           <Typography variant="body2" color="text.secondary" dir="ltr" sx={{ textAlign: 'start' }} noWrap>
             {channelIcon(conversation.channel)} {conversation.contact_phone}
           </Typography>
         </Box>
         {/* The main search lives on this line, next to the phone: no extra top bar. */}
-        <Box sx={{ flex: '1 1 260px', minWidth: 180, display: 'flex', justifyContent: 'center' }}>{search}</Box>
+        <Box sx={{ flex: '0 1 320px', minWidth: 160, display: 'flex' }}>{search}</Box>
         {conversation.assignee === me ? (
           <Tooltip title={t('conversations.assignedToYou')}>
             <HowToRegOutlinedIcon color="primary" sx={{ flexShrink: 0 }} aria-label={t('conversations.assignedToYou')} />
@@ -99,7 +99,7 @@ export default function ConversationThread({ conversation, events, actions = nul
           select size="small" value={conversation.status} disabled={busy}
           sx={{ flexShrink: 0, '& .MuiOutlinedInput-root': { borderRadius: 1.5, bgcolor: 'background.paper' } }}
           SelectProps={{ renderValue: (v) => (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>{STATUS_ICON[v]}{t(`conversations.status.${v}`)}</Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }} title={t(`conversations.status.${v}`)}>{STATUS_ICON[v]}</Box>
           ) }}
           onChange={(e) => run(() => changeStatus(conversation.id, e.target.value))}
           inputProps={{ 'aria-label': t('conversations.col.status') }}
