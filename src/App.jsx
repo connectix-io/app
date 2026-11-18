@@ -3,18 +3,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { DirectionProvider } from './context/DirectionContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import SipPhoneProvider from './context/SipPhoneContext';
-import { FireberryProvider } from './context/FireberryContext';
 import { useACL } from './hooks/useACL';
 import { ROUTE_PERMISSIONS } from './config/permissions';
 import Layout from './components/Layout/Layout.jsx';
 
 import Login from './components/Login/Login.jsx';
-import Dashboard from './components/Dashboard/dashboard.tsx';
-import Reports from './components/Reports/UsageReports.jsx';
-import Calls from './components/Calls/Calls.jsx';
 import Conversations from './components/Conversations/Conversations.jsx';
-import Notifications from './components/Notifications/Notifications.jsx';
-import SystemStatus from './components/Status/SystemStatus.jsx';
 
 function getPermissionForPath(pathname) {
   if (ROUTE_PERMISSIONS[pathname]) return ROUTE_PERMISSIONS[pathname];
@@ -34,7 +28,7 @@ const ProtectedRoute = ({ children, permission }) => {
 
   const requiredPermission = permission || getPermissionForPath(location.pathname);
   if (requiredPermission && !can(requiredPermission)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/conversations" replace />;
   }
   return children;
 };
@@ -50,11 +44,6 @@ function AppContent() {
       <Routes>
         <Route path="/login" element={<PublicRoute><Layout><Login /></Layout></PublicRoute>} />
         <Route path="/conversations" element={<ProtectedRoute><Layout><Conversations /></Layout></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-        <Route path="/calls" element={<ProtectedRoute><Layout><Calls /></Layout></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><Layout><Notifications /></Layout></ProtectedRoute>} />
-        <Route path="/status" element={<ProtectedRoute><Layout><SystemStatus /></Layout></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
@@ -66,9 +55,7 @@ function App() {
     <DirectionProvider>
       <AuthProvider>
         <SipPhoneProvider>
-          <FireberryProvider>
             <AppContent />
-          </FireberryProvider>
         </SipPhoneProvider>
       </AuthProvider>
     </DirectionProvider>

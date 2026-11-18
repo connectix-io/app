@@ -7,7 +7,6 @@ import MainMenu from '../MainMenu/MainMenu.jsx';
 import LoginLeft from '../LoginLeft/LoginLeft.jsx';
 import MenuIcon from '@mui/icons-material/Menu';
 import { APP_THEME } from '../../theme/appTheme';
-import SystemHealth from '../common/SystemHealth';
 import PhoneWidget from '../Phone/PhoneWidget';
 import ErrorBoundary from '../common/ErrorBoundary';
 import AccountMenu from './AccountMenu';
@@ -155,7 +154,6 @@ const Layout = ({ children }) => {
               {/* Right side — the phone lives here (menu/language/logout are in
                   the left drawer). Kept simple: health + the softphone. */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
-                <SystemHealth />
                 {phone}
                 <AccountMenu />
               </Box>

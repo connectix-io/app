@@ -1,0 +1,16 @@
+# A customer destination: copy to config/deploy.<customer>.yml, fill it in, then
+#   kamal deploy -d <customer>
+# Only what differs per customer lives here; config/deploy.yml holds the rest.
+
+servers:
+  web:
+    hosts:
+      - <%= h = ENV["KAMAL_HOST"].to_s.strip; h.empty? ? raise("KAMAL_HOST unset — export it or put it in .kamal/secrets") : h %>
+
+proxy:
+  hosts:
+    - app.example.com # the customer's domain
+
+env:
+  clear:
+    VOIPAPPZ_API_URL: https://api.example.com # this customer's voipappz-api

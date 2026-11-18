@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
+# Kamal pre-build: refuse to build an image from code that fails its own checks.
 set -euo pipefail
-
-echo "=== Pre-build: Deno type check ==="
-( cd api && deno check supabase.ts )
-
-# Frontend lint is handled by GitHub Actions CI (.github/workflows/ci.yml).
-# Skipped here because some build machines may not have a modern node available.
-
-echo "=== Pre-build: All checks passed ==="
+echo "=== pre-build: server tests ==="
+npm run --silent test:server
+echo "=== pre-build: ok ==="

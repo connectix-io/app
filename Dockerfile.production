@@ -1,67 +1,38 @@
-# Multistage build: React frontend + Deno backend in a single image.
-# Stage 1 builds the React bundle. Stage 2 runs Deno, which both serves the
-# built assets from /app/dist and dispatches API routes under /apps/*.
+# One image: the React build served by the Hono server (Node). Deployed with Kamal.
+#
+#   stage 1  npm ci + vite build  -> dist/
+#   stage 2  node:24-slim, production dependencies only, server/ + dist/
+#
+# VITE_* values are baked into the bundle at build time and are PUBLIC by design
+# (the Supabase publishable key ships in every browser; row-level security protects
+# the data). Server-side settings (VOIPAPPZ_API_URL, …) are runtime env, never baked.
 
-# Stage 1: Build React app
-FROM node:24-alpine AS frontend-builder
+FROM node:24-slim AS build
 WORKDIR /build
-
 ARG VITE_APP_VERSION
-ENV VITE_APP_VERSION=$VITE_APP_VERSION
-
-# Mothership/API base — MUST be exposed as ENV before `npm run build` so Vite
-# bakes it into the bundle; otherwise the app falls back to the code default
-# (https://cloud.voipappz.io) and talks to the cloud instead of this deployment.
-# Only bake vars we actually pass a value for — declaring an ARG with no value
-# bakes an EMPTY STRING, which `?? default` in code does NOT override (only the
-# code now uses `|| default`, which does). The auth/portal PATHS are left to
-# their code defaults, so we do NOT declare empty ARGs for them.
-ARG VITE_MOTHERSHIP_URL
-ENV VITE_MOTHERSHIP_URL=$VITE_MOTHERSHIP_URL
-
-# Supabase (login + conversations). Public by design: the publishable key ships
-# in every browser; row-level security protects the data. Empty = Supabase off.
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+ENV VITE_APP_VERSION=$VITE_APP_VERSION \
+    VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-
 COPY package.json package-lock.json ./
 RUN npm ci
-
 COPY . .
 RUN npm run build
 
-# Stage 2: Deno runtime serving React + API
-FROM denoland/deno:2.5.3
+FROM node:24-slim
 WORKDIR /app
-
-COPY api/deno.json api/deno.lock ./
-COPY api/*.ts ./
-# The mock seed fixture (calls + transcription jobs) is read at runtime by the
-# BFF, so it must ship in the image when MOCK_SEED=1.
-# NB: api/migrations was dropped in the thin-BFF refactor (6d23a4b, DuckDB buffer
-# removed); do not re-add a COPY for it — the dir no longer exists and the build
-# fails with "/api/migrations: not found".
-COPY api/mock ./mock
-RUN deno cache supabase.ts
-
-COPY --from=frontend-builder /build/dist ./dist
-
-# DuckDB event-store file. /app/data must be writable by the non-root `deno`
-# user (store.ts mkdir's it, but the parent dir needs the right owner).
-ENV DUCKDB_PATH=/app/data/events.duckdb
-RUN mkdir -p /app/data && chown -R deno /app/data
-
-ENV STATIC_DIR=/app/dist
-ENV PORT=3000
+ENV NODE_ENV=production PORT=3000 STATIC_DIR=/app/dist
+# The server needs only Hono (the React packages are already compiled into dist/).
+# Same versions as package-lock.json.
+RUN npm init -y >/dev/null && npm pkg set type=module \
+ && npm install --omit=dev --no-audit --no-fund hono@4.13.19 @hono/node-server@2.1.9 \
+ && npm cache clean --force
+COPY server/index.js ./server/index.js
+COPY --from=build /build/dist ./dist
+ARG VITE_APP_VERSION
+ENV APP_VERSION=$VITE_APP_VERSION
+USER node
 EXPOSE 3000
-
-# Healthcheck handled by kamal-proxy (proxy.healthcheck.path: /test in
-# config/deploy.yml). Avoiding a Dockerfile HEALTHCHECK because Deno 2.5's
-# `deno eval` does not accept --allow-* flags.
-
-USER deno
-
-# --allow-write (DuckDB file) + --allow-ffi/--allow-sys (DuckDB native addon).
-CMD ["deno", "run", "--allow-net", "--allow-env", "--allow-read", "--allow-write", "--allow-ffi", "--allow-sys", "supabase.ts"]
+# kamal-proxy checks /health (config/deploy.yml).
+CMD ["node", "server/index.js"]

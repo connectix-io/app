@@ -45,13 +45,13 @@ const Login = () => {
         </Typography>
 
         {error && (
-          <Alert severity="error" className="mb-3" data-testid="error-message">
+          <Alert severity="error" sx={{ mb: 2 }} data-testid="error-message">
             {error}
           </Alert>
         )}
 
         <Box component="form" onSubmit={handleSubmit} className="login-form" data-testid="login-form">
-          <FormControl fullWidth className="input-container email-container mb-3">
+          <FormControl fullWidth className="input-container email-container" sx={{ mb: 2 }}>
             <TextField
               fullWidth
               id="email"
