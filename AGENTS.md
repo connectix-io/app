@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 A template app: React + MUI (`src/`), a Hono server on Node (`server/`), deployed with
-Kamal (`config/`). Read [CLAUDE.md](./CLAUDE.md) first.
+Kamal (`config/`). Read [CLAUDE.md](./CLAUDE.md) first, including its "AI development" section.
 
 ## Commands
 `make install` once, `make dev` (Hono + Vite), `make check` before pushing (lint, tests, build),

@@ -55,6 +55,27 @@ build's assets (`/assets/*` cached for a year, a missing one is a 404), the page
 never cached, no dotfiles. `VOIPAPPZ_API_URL` is required in production. Add an app's own
 routes here when it needs a secret (webhooks, tokens). Tests: `server/index.test.js`.
 
+## AI development
+
+This repo is built to be worked on by AI coding agents (Claude Code, VoipAppz Builder).
+
+**Start here:** this file, then [ARCHITECTURE.md](./ARCHITECTURE.md). `AGENTS.md` is the
+short version for other agents.
+
+**The loop an agent should follow**
+1. `make install` once; `make dev` to run the app (Hono :3000 + Vite :4200).
+2. Make the smallest change that does the job; keep files small; no new layers.
+3. Add or update the nearest test (`src/**/*.test.*` for React, `server/index.test.js`
+   for the server).
+4. `make check` (lint + both test suites + build) must pass before saying it works.
+5. For a server or deploy change, `make start` or `make image` and probe `/health`.
+
+**Never**
+- put a secret in code, in a `VITE_*` variable or in a commit (`.env`, `.kamal/secrets`
+  are gitignored); real values come from the environment;
+- deploy (`kamal deploy`, `make deploy`) or push unless the person asked for that step;
+- add mock data outside tests, or a dependency when the existing code already does it.
+
 ## Deploy (Kamal)
 
 - `kamal setup -d <customer>` once per host, then `kamal deploy -d <customer>`.
