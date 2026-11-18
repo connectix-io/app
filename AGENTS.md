@@ -4,8 +4,8 @@ A template app: React + MUI (`src/`), a Hono server on Node (`server/`), deploye
 Kamal (`config/`). Read [CLAUDE.md](./CLAUDE.md) first.
 
 ## Commands
-`make dev` (Hono + Vite), `npm run build`, `npm start` (serve the build), `npm run lint`,
-`npm run test:run` (React + server unit tests), `make test` (Playwright).
+`make install` once, `make dev` (Hono + Vite), `make check` before pushing (lint, tests, build),
+`make start` / `make image` to try the production build, `make test` (Playwright).
 
 ## Style
 2-space indentation; `PascalCase` components, `useCamelCase` hooks, `camelCase` utilities.

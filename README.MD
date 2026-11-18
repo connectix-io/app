@@ -10,17 +10,21 @@ A starting point for VoipAppz customer apps: **React + MUI** in the browser, a s
 
 ## Quick start
 
+Node 24 (`.nvmrc`). Then:
+
 ```bash
-cp .env.example .env     # VOIPAPPZ_API_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
-npm install
+make install             # creates .env from .env.example, installs packages
 make dev                 # Hono :3000 + Vite :4200 → http://localhost:4200
 ```
 
-## Test
+Set `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `.env` to sign in. `make help` lists everything.
+
+## Check before you push
 
 ```bash
-npm run test:run         # React + server unit tests
-npm run lint
+make check               # lint + React and server tests + build (what CI runs)
+make start               # the production build, served by Hono, on :3000
+make image               # the real production image, run locally on :3000
 ```
 
 ## Deploy

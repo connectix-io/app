@@ -15,11 +15,11 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for how the pieces fit.
 
 | Command | What |
 |---|---|
-| `make dev` / `npm run dev:all` | Hono server (:3000) + Vite with HMR (:4200) |
-| `npm run build` | Production build → `dist/` |
-| `npm start` | Serve `dist/` with the Hono server (as production does) |
-| `npm run test:run` | Unit tests: React (jsdom) then server (node) |
-| `npm run lint` | ESLint |
+| `make install` | First run: `.env` from `.env.example`, packages |
+| `make dev` | Hono server (:3000) + Vite with HMR (:4200) |
+| `make check` | Lint + unit tests (React jsdom, server node) + build — run before pushing |
+| `make start` | The production build served by Hono on :3000 |
+| `make image` | The production image, built and run locally on :3000 |
 | `make test` | Playwright (`tests/`) against a running app |
 | `make setup` | Prepare a Supabase project (see SETUP.md) |
 | `kamal deploy -d <customer>` | Deploy (see Deploy) |

@@ -1,4 +1,4 @@
-.PHONY: help dev check-mothership up down build verify test push deploy ship status ci-list ci-local setup
+.PHONY: help install dev check start image check-mothership up down build verify test push deploy ship status ci-list ci-local setup
 
 # ── Config (override on the CLI or in .env) ─────────────────────────────────
 # The voipappz-api the server passes /api to — read from .env (VOIPAPPZ_API_URL), else the cloud.
@@ -16,10 +16,34 @@ PROD_URL ?= $(shell sed -n 's/^PROD_URL=//p' .env 2>/dev/null | head -1 | tr -d 
 
 help: ## Show this help
 	@awk 'BEGIN{FS=":.*## ";printf "\nmake \033[36m<target>\033[0m\n\n"} \
-	      /^[a-zA-Z0-9_-]+:.*## / {printf "  \033[36m%-9s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
+	      /^[a-zA-Z0-9_-]+:.*## / {printf "  \033[36m%-16s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
 
-dev: check-mothership ## Run the app: Hono server (:3000) + Vite with HMR (:4200)
+install: .env ## First run: create .env from .env.example and install packages
+	npm install
+
+.env:
+	cp .env.example .env
+	@echo "created .env from .env.example: set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY"
+
+node_modules: package-lock.json
+	npm install
+	@touch node_modules
+
+dev: .env node_modules ## Run the app: Hono (:3000) + Vite with hot reload (:4200)
+	@echo "→ http://localhost:4200"
 	npm run dev:all
+
+check: node_modules ## Everything CI checks: lint, unit tests (React + server), build
+	npm run lint
+	npm run test:run
+	npm run build
+
+start: build ## Serve the production build with the Hono server (http://localhost:3000)
+	npm start
+
+image: ## Build the production image and run it on http://localhost:3000
+	docker build -f Dockerfile.production -t voipappz-app:local .
+	docker run --rm -p 3000:3000 --env-file .env -e NODE_ENV=production voipappz-app:local
 
 check-mothership: ## Verify voipappz-api (VOIPAPPZ_API_URL) is reachable
 	@echo "==> Mothership (override: MOTHERSHIP=https://<host>)"
@@ -34,7 +58,7 @@ up: ## Start the app in Docker (Hono + Vite)
 down: ## Stop all services
 	docker compose down
 
-build: ## Production build → dist/
+build: node_modules ## Production build → dist/
 	npm run build
 
 verify: ## Health check: the Hono server and the web app
