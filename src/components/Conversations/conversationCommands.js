@@ -65,6 +65,16 @@ export function addNote(conversationId, { text }) {
   return append(conversationId, 'note.added', { text: required(text, 'Note') });
 }
 
+// A phone call on the conversation (shown in the thread and the customer panel).
+export function logCall(conversationId, { direction = 'out', durationSec = 0, summary = '', callUuid = '' }) {
+  return append(conversationId, 'call.logged', {
+    direction: direction === 'in' ? 'in' : 'out',
+    duration_sec: Math.max(0, Number(durationSec) || 0),
+    summary: summary.trim(),
+    call_uuid: callUuid,
+  });
+}
+
 export function changeStatus(conversationId, status) {
   if (!STATUSES.includes(status)) throw new Error(`Unknown status: ${status}`);
   return append(conversationId, 'status.changed', { status });

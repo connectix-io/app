@@ -47,6 +47,20 @@ describe('server', () => {
     expect(down.status).toBe(502);
   });
 
+  it('does not cut off a body that streams past the timeout once headers arrived', async () => {
+    const streaming = (req) => Promise.resolve(new Response(new ReadableStream({
+      async start(ctl) {
+        ctl.enqueue(new TextEncoder().encode('a'));
+        await new Promise((r) => setTimeout(r, 60));
+        if (!req.signal.aborted) ctl.enqueue(new TextEncoder().encode('b'));
+        ctl.close();
+      },
+    }), { status: 200 }));
+    const res = await createApp({ apiUrl: API, staticDir: built(), fetchImpl: streaming, timeoutMs: 20 }).request('/api/stream');
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('ab');
+  });
+
   it('serves the built app, with index.html for client routes', async () => {
     const app = createApp({ apiUrl: API, staticDir: built() });
     const page = await app.request('/conversations');

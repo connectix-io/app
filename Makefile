@@ -124,6 +124,5 @@ status: ## Local git + production health + deployed version
 	  curl -s -o /dev/null -w "GET /      → %{http_code}\n" $(PROD_URL)/; \
 	  curl -s -o /dev/null -w "GET /health → %{http_code}\n" $(PROD_URL)/health; \
 	  echo "=== Deployed version ==="; \
-	  curl -s $(PROD_URL)/ | grep -oE 'src="/assets/[^"]+\.js"' | head -1 | sed 's/src="//;s/"//' \
-	    | xargs -I{} curl -s "$(PROD_URL){}" | grep -oE '2026\.[0-9.]+-[a-f0-9]+' | sort -u | head -1; \
+	  curl -s $(PROD_URL)/health | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).version)}catch{console.log("unknown")}})'; \
 	fi

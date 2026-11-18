@@ -19,7 +19,9 @@ import { join, resolve, extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const VERSION = process.env.APP_VERSION || 'dev';
-const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS || 30_000);
+// How long the API has to start answering (headers). A body that then streams is not cut off.
+const UPSTREAM_TIMEOUT_MS = Number.parseInt(process.env.UPSTREAM_TIMEOUT_MS, 10) > 0
+  ? Number.parseInt(process.env.UPSTREAM_TIMEOUT_MS, 10) : 30_000;
 
 // Headers that belong to one hop and must not be forwarded.
 const HOP = ['connection', 'keep-alive', 'proxy-connection', 'proxy-authorization', 'proxy-authenticate',
@@ -54,16 +56,21 @@ export function createApp({ apiUrl, staticDir = resolve(process.env.STATIC_DIR |
     if (client || peer) headers.set('x-forwarded-for', [client, peer].filter(Boolean).join(', '));
     headers.set('x-forwarded-host', url.host);
     headers.set('x-forwarded-proto', c.req.header('x-forwarded-proto') || url.protocol.replace(':', ''));
+    // Aborted when the browser goes away, or when the API has not answered in time.
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(new DOMException('upstream timeout', 'TimeoutError')), timeoutMs);
+    const doFetch = fetchImpl || fetch;
     try {
       return await proxy(`${upstream}${url.pathname}${url.search}`, {
         raw: c.req.raw,
         headers,
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: AbortSignal.any([c.req.raw.signal, deadline.signal]),
         redirect: 'manual', // the browser follows the API's redirects itself (keeps Set-Cookie, never replays a body)
-        ...(fetchImpl ? { customFetch: fetchImpl } : {}),
+        customFetch: async (req) => { const res = await doFetch(req); clearTimeout(timer); return res; },
       });
     } catch (e) {
-      const timedOut = e?.name === 'TimeoutError' || e?.name === 'AbortError';
+      clearTimeout(timer);
+      const timedOut = deadline.signal.aborted;
       console.error(`upstream ${timedOut ? 'timeout' : 'error'}: ${c.req.method} ${url.pathname} (${e?.name || 'Error'})`);
       return c.json({ error: timedOut ? 'upstream timeout' : 'upstream unavailable' }, timedOut ? 504 : 502);
     }

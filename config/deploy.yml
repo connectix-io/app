@@ -31,8 +31,8 @@ builder:
   args:
     # Public by design: baked into the browser bundle.
     VITE_APP_VERSION: <%= "#{Time.now.strftime('%Y.%m.%d')}-#{`git rev-parse --short HEAD`.strip}" %>
-    VITE_SUPABASE_URL: <%= ENV["VITE_SUPABASE_URL"] %>
-    VITE_SUPABASE_ANON_KEY: <%= ENV["VITE_SUPABASE_ANON_KEY"] %>
+    VITE_SUPABASE_URL: <%= v = ENV["VITE_SUPABASE_URL"].to_s.strip; v.empty? ? raise("VITE_SUPABASE_URL unset — put it in .kamal/secrets and deploy with make") : v %>
+    VITE_SUPABASE_ANON_KEY: <%= v = ENV["VITE_SUPABASE_ANON_KEY"].to_s.strip; v.empty? ? raise("VITE_SUPABASE_ANON_KEY unset — put it in .kamal/secrets and deploy with make") : v %>
 
 proxy:
   app_port: 3000

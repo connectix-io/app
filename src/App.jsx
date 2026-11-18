@@ -27,9 +27,8 @@ const ProtectedRoute = ({ children, permission }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   const requiredPermission = permission || getPermissionForPath(location.pathname);
-  if (requiredPermission && !can(requiredPermission)) {
-    return <Navigate to="/conversations" replace />;
-  }
+  // Signed in without the permission: back to sign-in (never to a guarded page: that loops).
+  if (requiredPermission && !can(requiredPermission)) return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -44,7 +43,7 @@ function AppContent() {
       <Routes>
         <Route path="/login" element={<PublicRoute><Layout><Login /></Layout></PublicRoute>} />
         <Route path="/conversations" element={<ProtectedRoute><Layout><Conversations /></Layout></ProtectedRoute>} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

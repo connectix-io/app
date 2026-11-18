@@ -29,14 +29,8 @@ const Layout = ({ children }) => {
     </ErrorBoundary>
   );
 
-  // Header shows the current screen's name (per route), not a static product title.
-  const SCREEN_KEY = {
-    '/dashboard': 'menu.dashboard',
-    '/calls': 'menu.calls',
-    '/reports': 'menu.reports',
-    '/notifications': 'menu.notifications',
-    '/status': 'menu.status',
-  };
+  // The header title per route (i18n keys). Add an entry when you add a page.
+  const SCREEN_KEY = {};
   const screenKey = SCREEN_KEY[location.pathname];
   const screenTitle = screenKey ? t(screenKey) : t('header.title');
 

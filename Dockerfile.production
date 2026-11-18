@@ -24,10 +24,12 @@ FROM node:24-slim
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 STATIC_DIR=/app/dist
 # The server needs only Hono (the React packages are already compiled into dist/).
-# Same versions as package-lock.json.
-RUN npm init -y >/dev/null && npm pkg set type=module \
- && npm install --omit=dev --no-audit --no-fund hono@4.13.19 @hono/node-server@2.1.9 \
- && npm cache clean --force
+# Exactly the versions in package-lock.json (what the tests and the audit checked).
+COPY package-lock.json /tmp/lock.json
+RUN v() { node -p "require('/tmp/lock.json').packages['node_modules/$1'].version"; } \
+ && npm init -y >/dev/null && npm pkg set type=module \
+ && npm install --omit=dev --no-audit --no-fund "hono@$(v hono)" "@hono/node-server@$(v @hono/node-server)" \
+ && rm /tmp/lock.json && npm cache clean --force
 COPY server/index.js ./server/index.js
 COPY --from=build /build/dist ./dist
 ARG VITE_APP_VERSION
