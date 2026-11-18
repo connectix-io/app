@@ -1,32 +1,14 @@
-/**
- * Permission constants and role templates
- * Format: resource:action
- *
- * Template skeleton — 3 roles, 3 features (Dashboard, Calls, Reports).
- * Per-customer forks add their own permissions + roles.
- */
+// Permissions ("resource:action") and the roles that hold them. The template has one
+// page; a customer app adds its own permissions, roles and routes here.
 
-export const PERMISSIONS = {
-  DASHBOARD_READ: 'dashboard:read',
-  CALLS_READ: 'calls:read',
-  CALLS_WRITE: 'calls:write',
-  REPORTS_READ: 'reports:read',
-};
-
-export const ROLE_TEMPLATES = {
-  user: [
-    'dashboard:read',
-    'calls:read',
-    'reports:read',
-  ],
+const ROLE_TEMPLATES = {
+  user: ['conversations:read'],
   admin: ['*'],
   super_admin: ['*'],
 };
 
 export const ROUTE_PERMISSIONS = {
-  '/dashboard': 'dashboard:read',
-  '/calls': 'calls:read',
-  '/reports': 'reports:read',
+  '/conversations': 'conversations:read',
 };
 
 export function getPermissionsForRole(role) {

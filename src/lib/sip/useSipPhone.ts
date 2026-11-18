@@ -11,20 +11,20 @@ import {
 } from "sip.js";
 import { loadSipConfig, type SipConfig } from "./config";
 
-export type RegStatus = "idle" | "connecting" | "registered" | "unregistered" | "reconnecting" | "failed";
-export interface CallInfo {
+type RegStatus = "idle" | "connecting" | "registered" | "unregistered" | "reconnecting" | "failed";
+interface CallInfo {
   id: string;
   direction: "inbound" | "outbound";
   remote: string;
   state: "ringing" | "connecting" | "active" | "ended";
 }
-export interface SipCredentials {
+interface SipCredentials {
   username: string;
   password: string;
   domain?: string;
   displayName?: string;
 }
-export interface SipLogEntry {
+interface SipLogEntry {
   ts: number;
   level: string;     // debug | log | warn | error
   category: string;  // SIP.js logger category (e.g. sip.Transport)

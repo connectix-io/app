@@ -1,4 +1,4 @@
-.PHONY: help install dev check start image check-mothership up down build verify test push deploy ship status ci-list ci-local setup
+.PHONY: help install dev check start image setup-server rollback logs maintenance live check-mothership up down build verify test push deploy ship status ci-list ci-local setup
 
 # ── Config (override on the CLI or in .env) ─────────────────────────────────
 # The voipappz-api the server passes /api to — read from .env (VOIPAPPZ_API_URL), else the cloud.
@@ -81,7 +81,7 @@ test: ## Run all Playwright tests (needs the app running)
 
 # Kamal needs ruby-3.3.5 and .kamal/secrets sourced for ERB substitution in
 # config/deploy.yml (Kamal only auto-sources it for the registry password).
-KAMAL ?= $(shell test -x /home/ubuntu/.rvm/gems/ruby-3.3.5/wrappers/kamal && echo /home/ubuntu/.rvm/gems/ruby-3.3.5/wrappers/kamal || command -v kamal)
+KAMAL ?= kamal
 
 push: ## git push current branch to origin
 	git push
@@ -91,6 +91,26 @@ deploy: ## Deploy to a customer: make deploy DEST=<customer> (config/deploy.<cus
 	@set -a; . .kamal/secrets; set +a; $(KAMAL) deploy -d $(DEST)
 
 ship: push deploy ## git push + make deploy DEST=<customer> in one shot
+
+setup-server: ## First deploy to a NEW server: installs Docker + kamal-proxy, then deploys (DEST=<customer>)
+	@test -n "$(DEST)" || { echo "usage: make setup-server DEST=<customer>"; exit 1; }
+	@set -a; . .kamal/secrets; set +a; $(KAMAL) setup -d $(DEST)
+
+rollback: ## Go back to an earlier release: make rollback DEST=<customer> VERSION=<git sha>
+	@test -n "$(DEST)" -a -n "$(VERSION)" || { echo "usage: make rollback DEST=<customer> VERSION=<sha>"; exit 1; }
+	@set -a; . .kamal/secrets; set +a; $(KAMAL) rollback $(VERSION) -d $(DEST)
+
+logs: ## Follow the app's logs on the server (DEST=<customer>)
+	@test -n "$(DEST)" || { echo "usage: make logs DEST=<customer>"; exit 1; }
+	@set -a; . .kamal/secrets; set +a; $(KAMAL) app logs -f -d $(DEST)
+
+maintenance: ## Show a maintenance page instead of the app (DEST=<customer>); undo with make live
+	@test -n "$(DEST)" || { echo "usage: make maintenance DEST=<customer>"; exit 1; }
+	@set -a; . .kamal/secrets; set +a; $(KAMAL) app maintenance -d $(DEST)
+
+live: ## Back from maintenance (DEST=<customer>)
+	@test -n "$(DEST)" || { echo "usage: make live DEST=<customer>"; exit 1; }
+	@set -a; . .kamal/secrets; set +a; $(KAMAL) app live -d $(DEST)
 
 status: ## Local git + production health + deployed version
 	@echo "=== Local git ==="

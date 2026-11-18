@@ -2,7 +2,7 @@ import './App.css';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DirectionProvider } from './context/DirectionContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import SipPhoneProvider from './context/SipPhoneContext';
+import { SipPhoneProvider } from './context/SipPhoneContext';
 import { useACL } from './hooks/useACL';
 import { ROUTE_PERMISSIONS } from './config/permissions';
 import Layout from './components/Layout/Layout.jsx';

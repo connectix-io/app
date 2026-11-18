@@ -9,7 +9,15 @@ servers:
 
 proxy:
   hosts:
-    - app.example.com # the customer's domain
+    - app.example.com # the customer's domain (an A record pointing at the host)
+  # HTTPS: one line, once DNS points here — kamal-proxy gets a Let's Encrypt certificate.
+  # ssl: true
+
+# A new server usually takes SSH on 22 with your own key (the base assumes root on 2228).
+# ssh:
+#   user: root
+#   port: 22
+#   keys: ["~/.ssh/id_ed25519"]
 
 env:
   clear:

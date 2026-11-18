@@ -6,7 +6,7 @@ import { getPermissionsForRole } from '../config/permissions';
 const AuthContext = createContext();
 
 // Auth event types for cross-component communication
-export const AUTH_EVENTS = {
+const AUTH_EVENTS = {
   LOGOUT: 'auth:logout',
   UNAUTHORIZED: 'auth:unauthorized'
 };

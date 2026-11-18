@@ -40,6 +40,8 @@ proxy:
     path: /health
     interval: 3
     timeout: 5
+  # Longer than the server's API timeout (30 s), so the server answers 504 itself.
+  response_timeout: 35
 
 # Keeps the previous release's hashed JS/CSS next to the new ones during a swap, so a
 # browser still holding the old page never fetches a missing asset.
@@ -50,9 +52,22 @@ env:
     NODE_ENV: production
     PORT: 3000
 
-# Boot wait for the new container to become healthy, and old releases kept for rollback.
+# Boot wait for the new container to become healthy; time for the old one to finish
+# open requests (the server closes cleanly on SIGTERM); old releases kept for rollback.
 deploy_timeout: 60
+drain_timeout: 30
 retain_containers: 5
+
+# Several hosts: replace them one at a time, never all at once.
+boot:
+  limit: 1
+  wait: 2
+
+# Container logs rotate instead of filling the disk.
+logging:
+  options:
+    max-size: 10m
+    max-file: 3
 
 registry:
   username: nirlevi

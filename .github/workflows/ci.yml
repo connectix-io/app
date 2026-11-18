@@ -120,13 +120,16 @@ jobs:
     name: dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Reports, does not block: the tree has known high findings that predate this
-    # pipeline. Flip to blocking once `npm audit --audit-level=high` is clean.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/node-deps
-      - name: npm audit (high and above)
+      # Blocking: what ships (the image runs only Hono + the built bundle) must be clean.
+      - name: npm audit, production dependencies (high and above)
+        run: npm audit --omit=dev --audit-level=high
+      # Reported, not blocking: build/test tools never ship. As of 2026-11 a picomatch
+      # ReDoS (<=4.0.7, no patched release yet) reaches vite/vitest/typescript-eslint.
+      - name: npm audit, development tools (report only)
+        continue-on-error: true
         run: npm audit --audit-level=high
 
   docker:

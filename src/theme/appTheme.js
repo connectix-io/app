@@ -43,6 +43,3 @@ export const APP_THEME = {
  * @param {Object} user - User object from auth context
  * @returns {string} Role display name
  */
-export const getUserRoleName = (user) => {
-  return user?.role || 'משתמש';
-};

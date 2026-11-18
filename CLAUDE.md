@@ -22,7 +22,9 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for how the pieces fit.
 | `make image` | The production image, built and run locally on :3000 |
 | `make test` | Playwright (`tests/`) against a running app |
 | `make setup` | Prepare a Supabase project (see SETUP.md) |
-| `kamal deploy -d <customer>` | Deploy (see Deploy) |
+| `make setup-server DEST=<c>` / `make deploy DEST=<c>` | First deploy to a new server / every release ([DEPLOY.md](./DEPLOY.md)) |
+| `make logs` / `rollback` / `maintenance` / `live` `DEST=<c>` | Kamal day to day |
+| `make ci-local` | The CI workflow locally with act |
 
 ## Layout
 
@@ -81,6 +83,7 @@ short version for other agents.
 - `kamal setup -d <customer>` once per host, then `kamal deploy -d <customer>`.
 - `require_destination: true`: a bare deploy is refused.
 - kamal-proxy checks `/health`; `asset_path` keeps the previous release's assets during a
-  swap; `retain_containers: 5` for `kamal rollback`.
+  swap; `drain_timeout: 30`, `boot.limit: 1`, log rotation; `retain_containers: 5` for
+  `kamal rollback`. New server: [DEPLOY.md](./DEPLOY.md).
 - Hooks: `pre-build` runs the server tests; `post-deploy` checks `/health` and `/` when
   `KAMAL_HEALTHCHECK_URL` is set.

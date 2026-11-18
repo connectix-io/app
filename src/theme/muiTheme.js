@@ -14,7 +14,7 @@ export const APP_DIRECTION = localStorage.getItem('app-direction') || 'rtl';
 // Per-tenant override via the VITE_PRIMARY_COLOR env var (set in .env);
 // falls back to the template red. Drives palette.primary + button hover.
 // ============================================
-export const DEFAULT_BUTTON_COLOR = import.meta.env.VITE_PRIMARY_COLOR || '#00ADB4';
+const DEFAULT_BUTTON_COLOR = import.meta.env.VITE_PRIMARY_COLOR || '#00ADB4';
 const PRIMARY_HOVER = darken(DEFAULT_BUTTON_COLOR, 0.2);
 
 // ============================================

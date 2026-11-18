@@ -4,7 +4,7 @@
 // their extension credentials. Later these can be auto-populated from the account.
 import { loadSipConfig } from "./config";
 
-export interface SipSettings {
+interface SipSettings {
   wssUrl: string;
   domain: string;
   username: string;

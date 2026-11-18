@@ -6,7 +6,7 @@ BASE_URL="${KAMAL_HEALTHCHECK_URL:-}"
 if [ -z "$BASE_URL" ]; then echo "post-deploy: KAMAL_HEALTHCHECK_URL not set, skipping checks"; exit 0; fi
 fail=0
 for path in /health /; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE_URL$path")
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE_URL$path" || true)
   if [ "$code" = "200" ]; then echo "  ✓ $path → $code"; else echo "  ✗ $path → $code"; fail=1; fi
 done
 exit $fail
