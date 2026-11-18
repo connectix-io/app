@@ -21,7 +21,7 @@
     "test-quality": "npm run lint"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.42",
+    "@anthropic-ai/claude-code": "^2.1.325",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@fireberry/sdk": "^0.3.1",
