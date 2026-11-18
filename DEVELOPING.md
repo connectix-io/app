@@ -190,3 +190,35 @@ src/
     Calls/                  # ← blueprint feature (service → hook → component)
     Reports/  Login/  Phone/  Dashboard/  common/
 ```
+
+## The VoipAppz dev MCP
+
+`npm run dev` also serves an MCP server for the running app, on the dev
+server's own port:
+
+    http://localhost:4200/voipappz/mcp?include_browser_tools=false
+
+It is the `tidewave` npm package (Apache-2.0, pinned in `devDependencies`),
+loaded by `vite.config.js` for `vite serve` only; `vite build` and
+`vite preview` never load it, so the production bundle has none of it.
+`VITE_DEV_MCP=off npm run dev` leaves it out.
+
+| Tool | What the agent gets |
+|---|---|
+| `get_logs` | The dev server's console (HMR, compile errors, proxy errors); filter by `level`, `grep`, `since`, `tail`. Not the browser console |
+| `get_source_location` | The file and line of a module or symbol |
+| `get_docs` | Docs for a symbol, from the installed package versions |
+| `project_eval` | Runs JavaScript in the Vite process (no browser, no logins) |
+
+Connecting:
+
+- **VoipAppz Builder** adds it to its agent's MCP servers as `voipappz-app`,
+  on the port it started the dev server on.
+- **Claude Code** in this folder picks it up from `.mcp.json` (set
+  `DEV_PORT` if the dev server is not on 4200).
+
+Safety: it answers only requests from 127.0.0.1 / ::1 and refuses any request
+with an `Origin` header (403), so neither another machine nor a web page can
+reach it, even though the dev server listens on all interfaces. No toolbar is
+injected into the page. Logs are appended to
+`$TMPDIR/<hash of the app folder>.tidewave.ndjson`; delete it to start empty.

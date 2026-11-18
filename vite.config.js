@@ -14,13 +14,45 @@ const devHttps = fs.existsSync(DEV_KEY) && fs.existsSync(DEV_CRT)
   ? { key: fs.readFileSync(DEV_KEY), cert: fs.readFileSync(DEV_CRT) }
   : undefined
 
+// The VoipAppz dev MCP at /voipappz/mcp: registered before the package's own
+// middleware, it rewrites the voipappz path onto the package's fixed one.
+const DEV_MCP_PATH = '/voipappz/mcp'
+const voipappzMcpPath = () => ({
+  name: 'voipappz-dev-mcp-path',
+  configureServer(server) {
+    server.middlewares.use((req, _res, next) => {
+      if (req.url === DEV_MCP_PATH || req.url?.startsWith(`${DEV_MCP_PATH}?`) || req.url?.startsWith(`${DEV_MCP_PATH}/`)) {
+        req.url = `/tidewave/mcp${req.url.slice(DEV_MCP_PATH.length)}`
+      }
+      next()
+    })
+  }
+})
+
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ command, mode, isPreview }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '')
 
+  // The VoipAppz dev MCP: an MCP server on this dev server at /voipappz/mcp
+  // that gives a coding agent (VoipAppz Builder's, or Claude Code) the dev
+  // server's logs, source locations, version-pinned docs and code evaluation
+  // in the Vite process. Built on the `tidewave` npm package (Apache-2.0).
+  // Dev server only: imported lazily (importing it patches console), so
+  // `vite build` and `vite preview` never load it. Localhost only, no
+  // toolbar. VITE_DEV_MCP=off leaves it out. See DEVELOPING.md.
+  const plugins = [react()]
+  if (command === 'serve' && !isPreview && process.env.VITE_DEV_MCP !== 'off') {
+    const { default: devMcp } = await import('tidewave/vite-plugin')
+    plugins.push(voipappzMcpPath(), devMcp({
+      host: 'localhost',
+      allowRemoteAccess: false,
+      toolbar: false
+    }))
+  }
+
   return {
-    plugins: [react()],
+    plugins,
     // When this build was made, shown small at the bottom of the inbox sidebar.
     define: { 'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()) },
     // deno-api now serves everything (calls/events store + app endpoints) on a
