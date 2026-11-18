@@ -1,5 +1,5 @@
 # Base Node image
-FROM node:22-bullseye
+FROM node:26-bullseye
 
 # Install Claude CLI globally
 RUN npm install -g @anthropic-ai/claude-code
