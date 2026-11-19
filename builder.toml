@@ -1,0 +1,14 @@
+# How VoipAppz Builder runs the web app (Builder's "Web" platform): the
+# first time `make install` (not `make setup`, which sets up a Supabase
+# project), then `make dev` (Hono :3000 + Vite with hot reload :4200).
+# Builder shows the page beside its chat while the coding agent edits.
+[builder]
+kind = "product"
+name = "VoipAppz Web"
+port = 4200
+health = "/"
+page = "/"
+setup = "install"
+setup_done = "node_modules"
+start_timeout = 600
+requires = ["make", "node", "npm"]
